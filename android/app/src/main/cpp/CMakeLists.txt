@@ -26,6 +26,8 @@ add_library(
     modules/decoder/DecoderModule.cpp
     modules/output/OutputModule.cpp
     modules/dsp/DSPModule.cpp
+
+    output/OboeOutput.cpp
 )
 
 target_include_directories(
