@@ -30,7 +30,7 @@ add_library(
     output/OboeOutput.cpp
     output/AudioCallback.cpp
     pipeline/AudioPipeline.cpp
-    nodes/SineGeneratorNode.cpp
+    pipeline/source/SineGeneratorNode.cpp
 )
 
 target_include_directories(

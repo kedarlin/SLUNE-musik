@@ -1,9 +1,17 @@
 #include "AudioPipeline.h"
 
-void AudioPipeline::addNode(
-    std::unique_ptr<AudioNode> node)
+#include "../common/Logger.h"
+
+void AudioPipeline::setSource(
+    std::unique_ptr<AudioSourceNode> source)
 {
-    nodes_.push_back(std::move(node));
+    source_ = std::move(source);
+}
+
+void AudioPipeline::addEffect(
+    std::unique_ptr<AudioEffectNode> effect)
+{
+    effects_.push_back(std::move(effect));
 }
 
 void AudioPipeline::process(
@@ -12,8 +20,31 @@ void AudioPipeline::process(
     int32_t channelCount,
     float sampleRate)
 {
-    for (auto &node : nodes_)
+
+    static bool logged = false;
+    if (!logged)
     {
-        node->process(buffer, numFrames, channelCount, sampleRate);
+        LOGI("Pipeline is processing.");
+        logged = true;
+    }
+
+    AudioBuffer audioBuffer(buffer, numFrames, channelCount, sampleRate);
+    if (source_)
+    {
+        auto result = source_->process(audioBuffer);
+        if (result != ProcessResult::Continue)
+        {
+            return;
+        }
+    }
+
+    for (auto &effect : effects_)
+    {
+        auto result = effect->process(audioBuffer);
+
+        if (result != ProcessResult::Continue)
+        {
+            return;
+        }
     }
 }

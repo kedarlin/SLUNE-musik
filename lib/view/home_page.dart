@@ -34,8 +34,8 @@ class _HomePageState extends State<HomePage>
     super.initState();
     engine.initialize();
     engine.play();
-    engine.pause();
-    engine.release();
+    // engine.pause();
+    // engine.release();
 
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     musicListener();

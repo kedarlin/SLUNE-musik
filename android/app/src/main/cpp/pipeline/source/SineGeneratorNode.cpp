@@ -9,15 +9,12 @@ namespace
     constexpr float kPi = 3.14159265358979323846f;
 }
 
-void SineGeneratorNode::process(
-    float *buffer,
-    int32_t numFrames,
-    int32_t channelCount,
-    float sampleRate)
+ProcessResult SineGeneratorNode::process(
+    AudioBuffer &buffer)
 {
-    const float incremenet = 2.0f * kPi * kFrequency / sampleRate;
+    const float incremenet = 2.0f * kPi * kFrequency / buffer.sampleRate;
 
-    for (int32_t frame = 0; frame < numFrames; frame++)
+    for (int32_t frame = 0; frame < buffer.frames; frame++)
     {
         float sample = std::sin(phase_ * kAmplitude);
 
@@ -28,9 +25,11 @@ void SineGeneratorNode::process(
             phase_ -= 2.0f * kPi;
         }
 
-        for (int ch = 0; ch < channelCount; ch++)
+        for (int ch = 0; ch < buffer.channels; ch++)
         {
-            *buffer++ = sample;
+            *buffer.samples++ = sample;
         }
     }
+
+    return ProcessResult::Continue;
 }

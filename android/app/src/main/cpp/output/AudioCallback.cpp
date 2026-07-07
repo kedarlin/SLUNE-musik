@@ -1,7 +1,8 @@
 #include "AudioCallback.h"
 
 #include "../context/EngineContext.h"
-#include "../nodes/SineGeneratorNode.h"
+#include "../pipeline/source/SineGeneratorNode.h"
+#include "../common/Logger.h"
 
 #include <algorithm>
 #include <memory>
@@ -10,7 +11,7 @@ AudioCallback::AudioCallback(
     EngineContext &context)
     : context_(context)
 {
-    pipeline_.addNode(
+    pipeline_.setSource(
         std::make_unique<SineGeneratorNode>());
 }
 
@@ -19,6 +20,13 @@ oboe::DataCallbackResult AudioCallback::onAudioReady(
     void *audioData,
     int32_t numFrames)
 {
+    static bool logged = false;
+
+    if (!logged)
+    {
+        LOGI("Audio callback is running.");
+        logged = true;
+    }
     auto *output = static_cast<float *>(audioData);
 
     const int32_t channelCount = audioStream->getChannelCount();
