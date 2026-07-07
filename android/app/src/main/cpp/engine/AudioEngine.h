@@ -1,0 +1,30 @@
+#pragma once
+
+#include "../modules/decoder/DecoderModule.h"
+#include "../modules/dsp/DSPModule.h"
+#include "../modules/output/OutputModule.h"
+
+#include <memory>
+
+#include "../context/EngineContext.h"
+
+class AudioEngine
+{
+public:
+    AudioEngine();
+    ~AudioEngine();
+
+    bool initialize();
+
+    void play();
+
+    void pause();
+
+    void release();
+
+private:
+    std::unique_ptr<EngineContext> context_;
+    DecoderModule decoder_;
+    OutputModule output_;
+    DSPModule dsp_;
+};
