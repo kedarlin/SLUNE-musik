@@ -2,10 +2,7 @@
 
 #include "../../context/EngineContext.h"
 
-#include <android/log.h>
-
-#define TAG "MuxicEngine"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#include "../../common/Logger.h"
 
 bool OutputModule::initialize(EngineContext &)
 {

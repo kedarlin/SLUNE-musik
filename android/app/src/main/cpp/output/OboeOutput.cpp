@@ -1,9 +1,6 @@
 #include "OboeOutput.h"
 
-#include <android/log.h>
-
-#define TAG "MuxicEngine"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
+#include "./common/Logger.h"
 
 OboeOutput::OboeOutput() = default;
 
@@ -23,9 +20,9 @@ bool OboeOutput::initialize()
 
     auto result = builder.openStream(stream_);
 
-    if(result != oboe::Result::OK)
+    if (result != oboe::Result::OK)
     {
-        LOGI("Failed to open Oboe stream.");
+        LOGE("Failed to open Oboe stream.");
         return false;
     }
 
@@ -35,7 +32,7 @@ bool OboeOutput::initialize()
 
 void OboeOutput::shutdown()
 {
-    if(stream_)
+    if (stream_)
     {
         stream_->close();
         stream_.reset();
