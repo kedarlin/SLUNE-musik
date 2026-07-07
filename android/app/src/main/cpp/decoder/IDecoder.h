@@ -2,6 +2,7 @@
 
 #include "../pipeline/AudioBuffer.h"
 #include "../pipeline/ProcessResult.h"
+#include "../datasource/IDataSource.h"
 
 #include <string>
 
@@ -10,7 +11,7 @@ class IDecoder
 public:
     virtual ~IDecoder() = default;
 
-    virtual bool open(const std::string &filePath) = 0;
+    virtual bool open(IDataSource &source) = 0;
 
     virtual void close() = 0;
 

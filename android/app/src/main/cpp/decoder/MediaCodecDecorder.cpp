@@ -1,9 +1,11 @@
 #include "MediaCodecDecoder.h"
 
 #include "../common/Logger.h"
+#include "../datasource/IDataSource.h"
 
-bool MediaCodecDecoder::open(const std::string &)
+bool MediaCodecDecoder::open(IDataSource &source)
 {
+    source_ = &source;
     LOGI("MedaiCodecDecoder::open()");
 
     return true;
