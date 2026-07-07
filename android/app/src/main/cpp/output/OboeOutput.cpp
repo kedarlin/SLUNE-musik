@@ -9,7 +9,7 @@ OboeOutput::~OboeOutput()
     shutdown();
 }
 
-bool OboeOutput::initialize()
+bool OboeOutput::initialize(EngineContext &context)
 {
     oboe::AudioStreamBuilder builder;
 
@@ -18,7 +18,13 @@ bool OboeOutput::initialize()
     builder.setSharingMode(oboe::SharingMode::Exclusive);
     builder.setFormat(oboe::AudioFormat::Float);
 
+    callback_ = std::make_unique<AudioCallback>(context);
+
+    builder.setDataCallback(callback_.get());
+
     auto result = builder.openStream(stream_);
+
+    result = stream_->requestStart();
 
     if (result != oboe::Result::OK)
     {
@@ -34,6 +40,7 @@ void OboeOutput::shutdown()
 {
     if (stream_)
     {
+        stream_->requestStop();
         stream_->close();
         stream_.reset();
 

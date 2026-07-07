@@ -4,10 +4,10 @@
 
 #include "../../common/Logger.h"
 
-bool OutputModule::initialize(EngineContext &)
+bool OutputModule::initialize(EngineContext &context)
 {
     LOGI("OutoutModule initialized.");
-    return output_.initialize();
+    return output_.initialize(context);
 }
 
 void OutputModule::shutdown()

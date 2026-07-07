@@ -1,19 +1,20 @@
 #pragma once
 
-#include <memory>
+#include "AudioCallback.h"
 
+#include <memory>
 #include <oboe/Oboe.h>
 
 class OboeOutput
 {
-    public:
+public:
     OboeOutput();
     ~OboeOutput();
 
-    bool initialize();
-
+    bool initialize(EngineContext &context);
     void shutdown();
 
 private:
     std::shared_ptr<oboe::AudioStream> stream_;
+    std::unique_ptr<AudioCallback> callback_;
 };

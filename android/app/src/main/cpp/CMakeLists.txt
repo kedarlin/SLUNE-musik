@@ -28,6 +28,9 @@ add_library(
     modules/dsp/DSPModule.cpp
 
     output/OboeOutput.cpp
+    output/AudioCallback.cpp
+    pipeline/AudioPipeline.cpp
+    nodes/SineGeneratorNode.cpp
 )
 
 target_include_directories(
