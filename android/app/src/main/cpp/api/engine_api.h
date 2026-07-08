@@ -7,6 +7,8 @@ extern "C"
 
     bool engine_initialize();
 
+    bool engine_load_track(const char *path);
+
     void engine_play();
 
     void engine_pause();

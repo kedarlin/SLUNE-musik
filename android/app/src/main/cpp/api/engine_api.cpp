@@ -16,6 +16,16 @@ bool engine_initialize()
     return g_engine->initialize();
 }
 
+bool engine_load_track(const char *path)
+{
+    if (!g_engine)
+    {
+        return false;
+    }
+
+    return g_engine->loadTrack(path);
+}
+
 void engine_play()
 {
     if (g_engine)

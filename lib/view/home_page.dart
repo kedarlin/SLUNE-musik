@@ -7,7 +7,6 @@ import '../core/app_constants/app_enums.dart';
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
-import '../ffi/audio_engine.dart';
 import 'audio_songs_page.dart';
 import 'favourite_songs_page.dart';
 
@@ -27,16 +26,9 @@ class _HomePageState extends State<HomePage>
   bool isSearching = false;
   final TextEditingController searchController = TextEditingController();
 
-  final AudioEngine engine = AudioEngine.instance;
-
   @override
   void initState() {
     super.initState();
-    engine.initialize();
-    engine.play();
-    // engine.pause();
-    // engine.release();
-
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     musicListener();
     _tabController = TabController(length: Tabs.values.length, vsync: this);

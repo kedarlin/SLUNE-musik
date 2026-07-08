@@ -31,6 +31,18 @@ bool AudioEngine::initialize()
     return true;
 }
 
+bool AudioEngine::loadTrack(const std::string &path)
+{
+    if (!context_->initialized)
+    {
+        LOGE("Engine not initialized");
+
+        return false;
+    }
+
+    return decoder_.loadTrack(path);
+}
+
 void AudioEngine::play()
 {
     if (!context_->initialized)

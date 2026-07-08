@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import androidx.media3.common.MediaItem
 import com.example.music.player.MusicPlayerService
 import io.flutter.embedding.android.FlutterActivity
@@ -16,6 +17,7 @@ class MainActivity : FlutterActivity() {
 
     private val METHOD = "native_audio"
     private val EVENTS = "native_audio_events"
+    private val CHANNEL = "muxic/native"
 
     private var service: MusicPlayerService? = null
     private var bound = false
@@ -55,6 +57,23 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // ============================
+        // Channel → Flutter
+        // ============================
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler {
+                call,
+                result ->
+            when (call.method) {
+                "initializeAndroid" -> {
+                    Log.i("MuxicEngine", "Initializing Android Context")
+                    NativeBridge.nativeInitializeAndroid(applicationContext)
+
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         // ============================
         // EventChannel → Flutter

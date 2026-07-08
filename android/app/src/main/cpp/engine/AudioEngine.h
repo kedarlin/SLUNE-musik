@@ -5,6 +5,7 @@
 #include "../modules/output/OutputModule.h"
 
 #include <memory>
+#include <string>
 
 #include "../context/EngineContext.h"
 
@@ -15,6 +16,8 @@ public:
     ~AudioEngine();
 
     bool initialize();
+
+    bool loadTrack(const std::string &path);
 
     void play();
 

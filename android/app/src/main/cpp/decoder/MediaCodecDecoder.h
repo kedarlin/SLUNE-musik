@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Idecoder.h"
+#include "IDecoder.h"
+#include "../platform/android/MediaCodecAdapter.h"
 
 class MediaCodecDecoder : public IDecoder
 {
@@ -11,5 +12,5 @@ public:
     bool seek(int64_t positionMs) override;
 
 private:
-    IDataSource* source_ = nullptr;
+    MediaCodecAdapter adapter_;
 };

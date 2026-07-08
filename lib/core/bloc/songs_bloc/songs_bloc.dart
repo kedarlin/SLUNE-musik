@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+import '../../../ffi/audio_engine.dart';
+import '../../../service/engine_service.dart';
+
 part 'songs_event.dart';
 part 'songs_state.dart';
 
@@ -36,6 +39,13 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
     stateData.songById = <int, SongModel>{
       for (final SongModel s in fetched) s.id: s,
     };
+    if (fetched.isNotEmpty) {
+      await AndroidBridge.initialize();
+
+      final AudioEngine engine = AudioEngine.instance;
+      engine.initialize();
+      engine.loadTrack(fetched.first.uri ?? 'NA');
+    }
 
     // Cache songs
     stateData.songs = fetched;
@@ -55,11 +65,10 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
     }
 
     // Filter on cached list
-    stateData.searchSongs =
-        stateData.songs.where((SongModel s) {
-          return s.title.toLowerCase().contains(query) ||
-              (s.artist?.toLowerCase().contains(query) ?? false);
-        }).toList();
+    stateData.searchSongs = stateData.songs.where((SongModel s) {
+      return s.title.toLowerCase().contains(query) ||
+          (s.artist?.toLowerCase().contains(query) ?? false);
+    }).toList();
 
     emit(stateData);
   }
@@ -101,12 +110,11 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
     final Box<List<int>> box = Hive.box<List<int>>('favorites');
     final List<int> ids = box.get('favoritesList', defaultValue: <int>[])!;
 
-    stateData.favorites =
-        ids
-            .map((int id) => stateData.songById[id])
-            .where((SongModel? s) => s != null)
-            .cast<SongModel>()
-            .toList();
+    stateData.favorites = ids
+        .map((int id) => stateData.songById[id])
+        .where((SongModel? s) => s != null)
+        .cast<SongModel>()
+        .toList();
 
     emit(stateData);
   }

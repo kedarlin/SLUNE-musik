@@ -2,6 +2,10 @@
 
 #include "../common/Logger.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 FileDataSource::~FileDataSource()
 {
     close();
@@ -11,29 +15,36 @@ bool FileDataSource::open(const std::string &uri)
 {
     close();
 
-    stream_.open(uri, std::ios::binary);
+    fd_ = ::open(uri.c_str(), O_RDONLY);
 
-    if (!stream_.is_open())
+    if (fd_ < 0)
     {
         LOGE("Failed to open file: %s", uri.c_str());
         return false;
     }
 
-    stream_.seekg(0, std::ios::end);
-    length_ = static_cast<int64_t>(stream_.tellg());
-    stream_.seekg(0, std::ios::beg);
+    struct stat fileStat{};
+
+    if (fstat(fd_, &fileStat) != 0)
+    {
+        LOGE("Failed to read file information.");
+        close();
+        return false;
+    }
+
+    length_ = static_cast<int64_t>(fileStat.st_size);
+    path_ = uri;
 
     LOGI("Opened file: %s", uri.c_str());
-
     return true;
 }
 
 void FileDataSource::close()
 {
-    if (stream_.is_open())
+    if (fd_ >= 0)
     {
-        stream_.close();
-        length_ = 0;
+        ::close(fd_);
+        fd_ = -1;
     }
 }
 
@@ -41,37 +52,40 @@ size_t FileDataSource::read(
     uint8_t *buffer,
     size_t size)
 {
-    if (!stream_.is_open())
+    if (fd_ < 0)
     {
         return 0;
     }
 
-    stream_.read(reinterpret_cast<char *>(buffer), size);
+    ssize_t bytesRead = ::read(fd_, buffer, size);
 
-    return static_cast<size_t>(stream_.gcount());
+    if (bytesRead < 0)
+    {
+        return 0;
+    }
+
+    return static_cast<size_t>(bytesRead);
 }
 
 bool FileDataSource::seek(int64_t offset)
 {
-    if (!stream_.is_open())
+    if (fd_ < 0)
     {
         return false;
     }
 
-    stream_.seekg(offset, std::ios::beg);
-
-    return stream_.good();
+    return lseek(fd_, offset, SEEK_SET) != -1;
 }
 
 int64_t FileDataSource::position() const
 {
-    if (!stream_.is_open())
+    if (fd_ < 0)
     {
         return 0;
     }
 
     return static_cast<int64_t>(
-        const_cast<std::ifstream &>(stream_).tellg());
+        lseek(fd_, 0, SEEK_CUR));
 }
 
 int64_t FileDataSource::length() const
@@ -81,5 +95,15 @@ int64_t FileDataSource::length() const
 
 bool FileDataSource::isOpen() const
 {
-    return stream_.is_open();
+    return fd_ >= 0;
+}
+
+int FileDataSource::fileDescriptor() const
+{
+    return fd_;
+}
+
+int64_t FileDataSource::startOffset() const
+{
+    return 0;
 }

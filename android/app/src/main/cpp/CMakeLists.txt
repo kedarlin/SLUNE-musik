@@ -29,8 +29,22 @@ add_library(
 
     output/OboeOutput.cpp
     output/AudioCallback.cpp
+
     pipeline/AudioPipeline.cpp
     pipeline/source/SineGeneratorNode.cpp
+
+    datasource/FileDataSource.cpp
+    datasource/ContentDataSource.cpp
+
+    platform/android/JniBridge.cpp
+    platform/android/AndroidContext.cpp
+    platform/android/AndroidBindings.cpp
+    platform/android/MediaCodecAdapter.cpp
+    platform/android/AndroidContentResolver.cpp
+    platform/android/JniUtils.cpp
+
+    decoder/MediaCodecDecoder.cpp
+    
 )
 
 target_include_directories(
@@ -44,6 +58,8 @@ find_library(log-lib log)
 
 find_library(android-lib android)
 
+find_library(media-ndk-lib mediandk)
+
 target_link_libraries(
     muxic_engine
 
@@ -51,4 +67,5 @@ target_link_libraries(
 
     ${log-lib}
     ${android-lib}
+    ${media-ndk-lib}
 )

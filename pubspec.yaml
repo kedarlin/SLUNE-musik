@@ -49,6 +49,7 @@ dependencies:
   hive: ^2.2.3
   path_provider: ^2.1.5
   marquee: ^2.3.0
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:

@@ -17,4 +17,6 @@ public:
     virtual int64_t position() const = 0;
     virtual int64_t length() const = 0;
     virtual bool isOpen() const = 0;
+    virtual int fileDescriptor() const = 0;
+    virtual int64_t startOffset() const = 0;
 };
