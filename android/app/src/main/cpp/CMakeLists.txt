@@ -44,6 +44,8 @@ add_library(
     platform/android/JniUtils.cpp
 
     decoder/MediaCodecDecoder.cpp
+    decoder/controller/ExtractorController.cpp
+    decoder/controller/CodecController.cpp
     
 )
 

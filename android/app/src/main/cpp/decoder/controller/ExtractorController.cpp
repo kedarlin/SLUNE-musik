@@ -1,0 +1,148 @@
+#include "ExtractorController.h"
+
+#include "../../common/Logger.h"
+
+bool ExtractorController::open(IDataSource &source)
+{
+    source_ = &source;
+    state_.extractor = AMediaExtractor_new();
+
+    if (!state_.extractor)
+    {
+        LOGE("Failed to create extractor.");
+        return false;
+    }
+
+    media_status_t status =
+        AMediaExtractor_setDataSourceFd(
+            state_.extractor,
+            source_->fileDescriptor(),
+            source_->startOffset(),
+            source_->length());
+
+    if (status != AMEDIA_OK)
+    {
+        LOGE("Failed to set extractor data source.");
+        return false;
+    }
+
+    LOGI("Extractor initialized");
+
+    return true;
+}
+
+const ExtractorState &ExtractorController::state() const
+{
+    return state_;
+}
+
+bool ExtractorController::readMetaData()
+{
+    size_t trackCount = AMediaExtractor_getTrackCount(
+        state_.extractor);
+
+    LOGI("Track Count : %zu", trackCount);
+
+    for (size_t i = 0; i < trackCount; i++)
+    {
+        AMediaFormat *format = AMediaExtractor_getTrackFormat(
+            state_.extractor,
+            i);
+        if (!format)
+        {
+            continue;
+        }
+
+        const char *mime = nullptr;
+
+        AMediaFormat_getString(
+            format, AMEDIAFORMAT_KEY_MIME,
+            &mime);
+
+        if (mime && strncmp(mime, "audio/", 6) == 0)
+        {
+            state_.trackIndex = i;
+            state_.format = format;
+
+            AMediaExtractor_selectTrack(
+                state_.extractor,
+                i);
+
+            LOGI("Selected audio track : %zu", i);
+            LOGI("Mime : %s", mime);
+            break;
+        }
+    }
+
+    if (!state_.format)
+    {
+        LOGE("No audio track found.");
+
+        return false;
+    }
+
+    AMediaFormat_getInt32(
+        state_.format,
+        AMEDIAFORMAT_KEY_SAMPLE_RATE,
+        &state_.sampleRate);
+
+    AMediaFormat_getInt32(
+        state_.format,
+        AMEDIAFORMAT_KEY_CHANNEL_COUNT,
+        &state_.channelCount);
+
+    AMediaFormat_getInt32(
+        state_.format,
+        AMEDIAFORMAT_KEY_BIT_RATE,
+        &state_.bitRate);
+
+    AMediaFormat_getInt64(
+        state_.format,
+        AMEDIAFORMAT_KEY_DURATION,
+        &state_.durationUs);
+
+    LOGI("Sample Rate : %d",
+         state_.sampleRate);
+
+    LOGI("Channels : %d",
+         state_.channelCount);
+
+    LOGI("Bitrate : %d",
+         state_.bitRate);
+
+    LOGI("Duration : %lld us",
+         (long long)state_.durationUs);
+
+    return true;
+}
+
+ExtractorController::~ExtractorController()
+{
+    close();
+}
+
+void ExtractorController::close()
+{
+    if (state_.format)
+    {
+        AMediaFormat_delete(state_.format);
+        state_.format = nullptr;
+    }
+
+    if (state_.extractor)
+    {
+        AMediaExtractor_delete(state_.extractor);
+        state_.extractor = nullptr;
+    }
+
+    source_ = nullptr;
+
+    LOGI("ExtractorController closed.");
+}
+
+bool ExtractorController::seek(int64_t)
+{
+    LOGI("MediaCodecAdapter seek.");
+
+    return true;
+}

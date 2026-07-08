@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../datasource/IDataSource.h"
+#include "CodecState.h"
+#include "ExtractorState.h"
 
 #include <media/NdkMediaExtractor.h>
 #include <media/NdkMediaFormat.h>
@@ -13,15 +15,7 @@ public:
 
     IDataSource *source = nullptr;
 
-    AMediaExtractor *extractor = nullptr;
+    ExtractorState extractor;
 
-    AMediaFormat *format = nullptr;
-
-    int32_t trackIndex = -1;
-
-    int32_t sampleRate = 0;
-
-    int32_t channelCount = 0;
-
-    int64_t durationUs = 0;
+    CodecState codec;
 };

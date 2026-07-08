@@ -2,7 +2,7 @@
 
 #include "../../common/Logger.h"
 
-MediaCodecAdapter::MediaCodecAdapter() : session_(std::make_unique<MediaCodecSession>())
+MediaCodecAdapter::MediaCodecAdapter()
 {
 }
 
@@ -13,14 +13,21 @@ MediaCodecAdapter::~MediaCodecAdapter()
 
 bool MediaCodecAdapter::open(IDataSource &source)
 {
-    session_->source = &source;
-    session_->extractor = AMediaExtractor_new();
-
-    if (session_->extractor == nullptr)
+    if (!extractor_.open(source))
     {
-        LOGE("Failed to create MediaExtractor.");
         return false;
     }
+
+    if (!extractor_.readMetaData())
+    {
+        return false;
+    }
+
+    if (!codec_.initialize(extractor_.state()))
+    {
+        return false;
+    }
+
     LOGI("MediaCodecAdapter opened.");
 
     return true;
@@ -28,8 +35,9 @@ bool MediaCodecAdapter::open(IDataSource &source)
 
 void MediaCodecAdapter::close()
 {
+    codec_.close();
+    extractor_.close();
     LOGI("MediaCodecAdapter closed.");
-    session_->source = nullptr;
 }
 
 ProcessResult MediaCodecAdapter::decode(AudioBuffer &)
