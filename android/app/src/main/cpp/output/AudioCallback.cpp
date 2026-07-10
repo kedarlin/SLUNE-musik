@@ -2,17 +2,21 @@
 
 #include "../context/EngineContext.h"
 #include "../pipeline/source/SineGeneratorNode.h"
+#include "../pipeline/AudioNode.h"
 #include "../common/Logger.h"
 
 #include <algorithm>
 #include <memory>
 
 AudioCallback::AudioCallback(
-    EngineContext &context)
-    : context_(context)
+    EngineContext &context, AudioPipeline &pipeline)
+    : context_(context), pipeline_(pipeline)
 {
-    pipeline_.setSource(
-        std::make_unique<SineGeneratorNode>());
+    // pipeline_.setSource(
+    //     std::make_unique<SineGeneratorNode>());
+
+    // pipeline_.setSource(
+    //     std::make_unique<TrackSourceNode>(decoderModule.decoder()));
 }
 
 oboe::DataCallbackResult AudioCallback::onAudioReady(

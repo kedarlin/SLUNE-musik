@@ -7,7 +7,12 @@
 bool OutputModule::initialize(EngineContext &context)
 {
     LOGI("OutoutModule initialized.");
-    return output_.initialize(context);
+    return output_.initialize(context, pipeline_);
+}
+
+AudioPipeline &OutputModule::pipeline()
+{
+    return pipeline_;
 }
 
 void OutputModule::shutdown()

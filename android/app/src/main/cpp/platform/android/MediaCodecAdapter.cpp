@@ -40,9 +40,9 @@ void MediaCodecAdapter::close()
     LOGI("MediaCodecAdapter closed.");
 }
 
-ProcessResult MediaCodecAdapter::decode(AudioBuffer &)
+ProcessResult MediaCodecAdapter::decode(AudioBuffer &buffer)
 {
-    return ProcessResult::NoData;
+    return codec_.decode(extractor_.state(), buffer);
 }
 
 bool MediaCodecAdapter::seek(int64_t)

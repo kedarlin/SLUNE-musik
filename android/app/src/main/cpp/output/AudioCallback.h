@@ -9,7 +9,7 @@ class EngineContext;
 class AudioCallback : public oboe::AudioStreamDataCallback
 {
 public:
-    explicit AudioCallback(EngineContext &context);
+    explicit AudioCallback(EngineContext &context, AudioPipeline &pipeline);
 
     oboe::DataCallbackResult onAudioReady(
         oboe::AudioStream *audioStream,
@@ -19,5 +19,5 @@ public:
 private:
     EngineContext &context_;
 
-    AudioPipeline pipeline_;
+    AudioPipeline &pipeline_;
 };

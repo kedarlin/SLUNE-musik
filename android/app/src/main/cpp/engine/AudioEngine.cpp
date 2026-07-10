@@ -1,6 +1,7 @@
 #include "AudioEngine.h"
 
 #include "../common/Logger.h"
+#include "../pipeline/source/TrackSourceNode.h"
 
 AudioEngine::AudioEngine()
     : context_(std::make_unique<EngineContext>())
@@ -27,6 +28,9 @@ bool AudioEngine::initialize()
     dsp_.initialize(*context_);
 
     LOGI("Engine initialized.");
+
+    output_.pipeline().setSource(std::make_unique<TrackSourceNode>(
+        decoder_.decoder()));
 
     return true;
 }

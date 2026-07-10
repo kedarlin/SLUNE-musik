@@ -12,22 +12,26 @@ namespace
 ProcessResult SineGeneratorNode::process(
     AudioBuffer &buffer)
 {
-    const float incremenet = 2.0f * kPi * kFrequency / buffer.sampleRate;
+    const float increment = 2.0f * kPi * kFrequency / buffer.sampleRate;
+
+    float *samples =
+        static_cast<float *>(buffer.data);
 
     for (int32_t frame = 0; frame < buffer.frames; frame++)
     {
-        float sample = std::sin(phase_ * kAmplitude);
+        float sample =
+            std::sin(phase_) * kAmplitude;
 
-        phase_ += incremenet;
+        phase_ += increment;
 
         if (phase_ > 2.0f * kPi)
         {
             phase_ -= 2.0f * kPi;
         }
 
-        for (int ch = 0; ch < buffer.channels; ch++)
+        for (int32_t ch = 0; ch < buffer.channels; ch++)
         {
-            *buffer.samples++ = sample;
+            samples[frame * buffer.channels + ch] = sample;
         }
     }
 

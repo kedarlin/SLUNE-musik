@@ -7,8 +7,10 @@ class OutputModule : public IAudioModule
 {
 public:
     bool initialize(EngineContext &context) override;
+    AudioPipeline &pipeline();
     void shutdown() override;
 
 private:
+    AudioPipeline pipeline_;
     OboeOutput output_;
 };

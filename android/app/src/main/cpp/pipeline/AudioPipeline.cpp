@@ -28,7 +28,12 @@ void AudioPipeline::process(
         logged = true;
     }
 
-    AudioBuffer audioBuffer(buffer, numFrames, channelCount, sampleRate);
+    AudioBuffer audioBuffer(buffer, numFrames, channelCount, sampleRate, SampleFormat::Float32);
+    LOGI(
+        "Pipeline wants %d frames (%d samples)",
+        audioBuffer.frames,
+        audioBuffer.sampleCount());
+
     if (source_)
     {
         auto result = source_->process(audioBuffer);

@@ -4,6 +4,9 @@
 #include "../../pipeline/ProcessResult.h"
 #include "../../platform/android/CodecState.h"
 #include "../../platform/android/ExtractorState.h"
+#include "../../platform/android/CodecBufferState.h"
+
+#include <vector>
 
 class CodecController
 {
@@ -12,11 +15,16 @@ public:
     ~CodecController();
 
     bool initialize(const ExtractorState &extractor);
-    ProcessResult decode(AudioBuffer &buffer);
+    ProcessResult decode(const ExtractorState &extractor, AudioBuffer &buffer);
 
     void flush();
     void close();
 
 private:
+    bool queueInputBuffer(
+        const ExtractorState &);
+    ProcessResult dequeueOutputBuffer(const ExtractorState &, AudioBuffer &);
     CodecState state_;
+    CodecBufferState buffers_;
+    std::vector<int16_t> pcmBuffer_;
 };

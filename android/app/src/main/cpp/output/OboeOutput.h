@@ -2,6 +2,8 @@
 
 #include "AudioCallback.h"
 
+#include "../pipeline/AudioPipeline.h"
+
 #include <memory>
 #include <oboe/Oboe.h>
 
@@ -11,7 +13,7 @@ public:
     OboeOutput();
     ~OboeOutput();
 
-    bool initialize(EngineContext &context);
+    bool initialize(EngineContext &context, AudioPipeline &pipeline);
     void shutdown();
 
 private:

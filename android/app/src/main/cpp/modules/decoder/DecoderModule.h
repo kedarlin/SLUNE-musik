@@ -15,6 +15,8 @@ public:
 
     void shutdown() override;
 
+    MediaCodecDecoder &decoder();
+
 private:
     std::unique_ptr<IDataSource> source_;
     MediaCodecDecoder decoder_;

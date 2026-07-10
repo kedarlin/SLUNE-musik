@@ -14,13 +14,21 @@ void MediaCodecDecoder::close()
     adapter_.close();
 }
 
-ProcessResult MediaCodecDecoder::decode(AudioBuffer &buffer)
-{
-    return adapter_.decode(buffer);
-}
-
 bool MediaCodecDecoder::seek(int64_t positionMs)
 {
     LOGI("MediaCodecDecoder::seek()");
     return adapter_.seek(positionMs);
+}
+
+ProcessResult MediaCodecDecoder::decode(
+    AudioBuffer &buffer)
+{
+    static bool logged = false;
+
+    if (!logged)
+    {
+        LOGI("MediaCodecDecoder::decode()");
+        logged = true;
+    }
+    return adapter_.decode(buffer);
 }

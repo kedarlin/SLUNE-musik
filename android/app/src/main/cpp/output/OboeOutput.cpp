@@ -9,7 +9,7 @@ OboeOutput::~OboeOutput()
     shutdown();
 }
 
-bool OboeOutput::initialize(EngineContext &context)
+bool OboeOutput::initialize(EngineContext &context, AudioPipeline &pipeline)
 {
     oboe::AudioStreamBuilder builder;
 
@@ -17,12 +17,21 @@ bool OboeOutput::initialize(EngineContext &context)
     builder.setPerformanceMode(oboe::PerformanceMode::LowLatency);
     builder.setSharingMode(oboe::SharingMode::Exclusive);
     builder.setFormat(oboe::AudioFormat::Float);
+    builder.setSampleRate(44100);
 
-    callback_ = std::make_unique<AudioCallback>(context);
+    callback_ = std::make_unique<AudioCallback>(context, pipeline);
 
     builder.setDataCallback(callback_.get());
 
     auto result = builder.openStream(stream_);
+
+    LOGI("Oboe Sample Rate : %d", stream_->getSampleRate());
+    LOGI("Oboe Channel Count : %d", stream_->getChannelCount());
+    LOGI("Oboe Format : %d", static_cast<int>(stream_->getFormat()));
+    LOGI("Oboe Frames Per Callback : %d", stream_->getFramesPerDataCallback());
+    LOGI(
+        "Oboe format enum = %d",
+        static_cast<int>(stream_->getFormat()));
 
     result = stream_->requestStart();
 

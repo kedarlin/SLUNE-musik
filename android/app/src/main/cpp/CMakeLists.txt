@@ -32,6 +32,7 @@ add_library(
 
     pipeline/AudioPipeline.cpp
     pipeline/source/SineGeneratorNode.cpp
+    pipeline/source/TrackSourceNode.cpp
 
     datasource/FileDataSource.cpp
     datasource/ContentDataSource.cpp
@@ -46,7 +47,9 @@ add_library(
     decoder/MediaCodecDecoder.cpp
     decoder/controller/ExtractorController.cpp
     decoder/controller/CodecController.cpp
-    
+
+    common/AudioConverter.cpp
+    common/AudioFifo.cpp
 )
 
 target_include_directories(

@@ -45,6 +45,8 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
       final AudioEngine engine = AudioEngine.instance;
       engine.initialize();
       engine.loadTrack(fetched.first.uri ?? 'NA');
+
+      engine.play();
     }
 
     // Cache songs
