@@ -22,6 +22,7 @@ add_library(
     api/engine_api.cpp
 
     engine/AudioEngine.cpp
+    engine/PlaybackWorker.cpp
 
     modules/decoder/DecoderModule.cpp
     modules/output/OutputModule.cpp
@@ -47,6 +48,8 @@ add_library(
     decoder/MediaCodecDecoder.cpp
     decoder/controller/ExtractorController.cpp
     decoder/controller/CodecController.cpp
+
+    playback/PlaybackController.cpp
 
     common/AudioConverter.cpp
     common/AudioFifo.cpp

@@ -9,6 +9,7 @@
 bool DecoderModule::initialize(EngineContext &)
 {
     LOGI("DecoderModule initialized.");
+    playback_.initialize(decoder_);
     return true;
 }
 
@@ -35,11 +36,6 @@ bool DecoderModule::loadTrack(const std::string &path)
     }
 
     return decoder_.open(*source_);
-}
-
-MediaCodecDecoder &DecoderModule::decoder()
-{
-    return decoder_;
 }
 
 void DecoderModule::shutdown()

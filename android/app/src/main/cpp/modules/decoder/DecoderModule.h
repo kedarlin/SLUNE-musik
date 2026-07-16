@@ -3,8 +3,10 @@
 #include "../base/IAudioModule.h"
 #include "../../decoder/MediaCodecDecoder.h"
 #include "../../datasource/FileDataSource.h"
+#include "../../playback/PlaybackController.h"
 
 #include <string>
+#include <memory>
 
 class DecoderModule : public IAudioModule
 {
@@ -15,9 +17,18 @@ public:
 
     void shutdown() override;
 
-    MediaCodecDecoder &decoder();
+    MediaCodecDecoder &decoder()
+    {
+        return decoder_;
+    }
+
+    PlaybackController &playback()
+    {
+        return playback_;
+    }
 
 private:
     std::unique_ptr<IDataSource> source_;
     MediaCodecDecoder decoder_;
+    PlaybackController playback_;
 };

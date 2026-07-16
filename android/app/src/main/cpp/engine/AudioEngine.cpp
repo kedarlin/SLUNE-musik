@@ -30,7 +30,7 @@ bool AudioEngine::initialize()
     LOGI("Engine initialized.");
 
     output_.pipeline().setSource(std::make_unique<TrackSourceNode>(
-        decoder_.decoder()));
+        decoder_.playback()));
 
     return true;
 }
@@ -44,7 +44,18 @@ bool AudioEngine::loadTrack(const std::string &path)
         return false;
     }
 
-    return decoder_.loadTrack(path);
+    bool success = decoder_.loadTrack(path);
+
+    if (!success)
+    {
+        return false;
+    }
+    decoder_.playback().clear();
+    decoder_.playback().start();
+
+    LOGI("PlaybackWorker launched.");
+
+    return success;
 }
 
 void AudioEngine::play()
@@ -80,6 +91,10 @@ void AudioEngine::release()
     }
 
     context_->playing = false;
+
+    decoder_.playback().stop();
+    decoder_.playback().clear();
+
     context_->initialized = false;
 
     dsp_.shutdown();
