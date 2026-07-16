@@ -55,7 +55,7 @@ void PlaybackWorker::workerLoop()
 {
     while (!stopRequested_)
     {
-        controller_->fillBuffer();
+        controller_->fillFifo();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }

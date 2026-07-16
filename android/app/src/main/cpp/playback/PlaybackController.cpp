@@ -70,7 +70,7 @@ void PlaybackController::stop()
     worker_.stop();
 }
 
-void PlaybackController::fillBuffer()
+void PlaybackController::fillFifo()
 {
     if (!decoder_)
     {

@@ -25,7 +25,7 @@ public:
 
     void stop();
 
-    void fillBuffer();
+    void fillFifo();
 
     bool isRunning() const;
 
