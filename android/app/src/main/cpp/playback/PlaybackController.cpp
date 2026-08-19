@@ -3,9 +3,12 @@
 #include "../common/AudioConverter.h"
 #include "../common/Logger.h"
 
-PlaybackController::PlaybackController()
+PlaybackController::PlaybackController(
+    MediaCodecDecoder &decoder,
+    PlaybackState &playbackState)
+    : decoder_(&decoder),
+      playbackState_(playbackState)
 {
-    playbackBuffer_.resize(256 * 2);
 }
 
 bool PlaybackController::initialize(
@@ -30,6 +33,10 @@ ProcessResult PlaybackController::render(
         fifo_.pop(
             playbackBuffer_.data(),
             outputBuffer.frames);
+    if (fifo_.availableFrames() < kLowWaterMarkFrames)
+    {
+        worker_.requestFill();
+    }
 
     AudioConverter::int16ToFloat(
         playbackBuffer_.data(),
@@ -46,6 +53,8 @@ ProcessResult PlaybackController::render(
                 outputBuffer.sampleCount(),
             0.0f);
     }
+
+    playbackState_.addRenderedFrames(framesRead);
 
     return ProcessResult::Continue;
 }
@@ -113,5 +122,5 @@ bool PlaybackController::isRunning() const
 
 bool PlaybackController::needsMoreData() const
 {
-    return fifo_.availableFrames() < kLowWaterMarkFrames;
+    return fifo_.availableFrames() < kHighWaterMarkFrames;
 }

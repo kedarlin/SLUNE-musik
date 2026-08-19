@@ -38,7 +38,33 @@ bool DecoderModule::loadTrack(const std::string &path)
     return decoder_.open(*source_);
 }
 
+void DecoderModule::initializePlaybackSession()
+{
+    metadata_.sampleRate =
+        decoder_.sampleRate();
+
+    metadata_.channels =
+        decoder_.channelCount();
+
+    metadata_.bitRate =
+        decoder_.bitRate();
+
+    metadata_.durationUs =
+        decoder_.durationUs();
+
+    playbackState_.reset();
+
+    playback_.clear();
+
+    playback_.start();
+}
+
 void DecoderModule::shutdown()
 {
     LOGI("DecoderModule shutdown.");
+}
+
+PlaybackSnapshot DecoderModule::playbackSnapshot() const
+{
+    return PlaybackClock::snapshot(metadata_, playbackState_);
 }

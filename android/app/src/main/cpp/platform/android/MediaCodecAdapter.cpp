@@ -45,9 +45,21 @@ ProcessResult MediaCodecAdapter::decode(AudioBuffer &buffer)
     return codec_.decode(extractor_.state(), buffer);
 }
 
-bool MediaCodecAdapter::seek(int64_t)
+bool MediaCodecAdapter::seek(int64_t positionUs)
 {
-    LOGI("MediaCodecAdapter seek.");
+    if (!codec_)
+    {
+        return false;
+    }
+
+    LOGI("Seeking to %lld us", static_cast<long long>(positionUs));
+
+    AMediaCodec_flush(codec_);
+
+    if (!extractor_.seek(positionUs))
+    {
+        return false;
+    }
 
     return true;
 }

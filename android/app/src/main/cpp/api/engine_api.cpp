@@ -6,6 +6,11 @@
 
 static std::unique_ptr<AudioEngine> g_engine;
 
+bool engine_seek(int64_t positionUs)
+{
+    return gEngine.seek(positionUs) == ProcessResult::Continue;
+}
+
 bool engine_initialize()
 {
     if (!g_engine)

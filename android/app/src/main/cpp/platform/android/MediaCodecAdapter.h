@@ -18,6 +18,25 @@ public:
 
     ProcessResult decode(AudioBuffer &buffer);
     bool seek(int64_t positionMs);
+    int sampleRate() const
+    {
+        return extractor_.sampleRate();
+    }
+
+    int channelCount() const
+    {
+        return extractor_.channelCount();
+    }
+
+    int bitRate() const
+    {
+        return extractor_.bitRate();
+    }
+
+    int64_t durationUs() const
+    {
+        return extractor_.durationUs();
+    }
 
 private:
     ExtractorController extractor_;

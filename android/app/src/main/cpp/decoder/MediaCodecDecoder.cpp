@@ -14,10 +14,14 @@ void MediaCodecDecoder::close()
     adapter_.close();
 }
 
-bool MediaCodecDecoder::seek(int64_t positionMs)
+ProcessResult MediaCodecDecoder::seek(int64_t positionUs)
 {
-    LOGI("MediaCodecDecoder::seek()");
-    return adapter_.seek(positionMs);
+    if (!adapter_.seek(positionUs))
+    {
+        return ProcessResult::Error;
+    }
+
+    return ProcessResult::Continue;
 }
 
 ProcessResult MediaCodecDecoder::decode(

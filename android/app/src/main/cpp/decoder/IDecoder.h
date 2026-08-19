@@ -17,5 +17,5 @@ public:
 
     virtual ProcessResult decode(AudioBuffer &buffer) = 0;
 
-    virtual bool seek(int64_t positionMs) = 0;
+    virtual ProcessResult seek(int64_t positionMs) = 0;
 };

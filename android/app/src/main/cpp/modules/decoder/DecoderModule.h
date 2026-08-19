@@ -4,6 +4,8 @@
 #include "../../decoder/MediaCodecDecoder.h"
 #include "../../datasource/FileDataSource.h"
 #include "../../playback/PlaybackController.h"
+#include "../../engine/playback/PlaybackClock.h"
+#include "../../engine/playback/PlaybackMetadata.h"
 
 #include <string>
 #include <memory>
@@ -17,9 +19,33 @@ public:
 
     void shutdown() override;
 
+    void initializePlaybackSession();
+
+    PlaybackSnapshot playbackSnapshot() const;
+
     MediaCodecDecoder &decoder()
     {
         return decoder_;
+    }
+
+    int sampleRate() const
+    {
+        return decoder_.sampleRate();
+    }
+
+    int channelCount() const
+    {
+        return decoder_.channelCount();
+    }
+
+    int bitRate() const
+    {
+        return decoder_.bitRate();
+    }
+
+    int64_t durationUs() const
+    {
+        return decoder_.durationUs();
     }
 
     PlaybackController &playback()
@@ -30,5 +56,7 @@ public:
 private:
     std::unique_ptr<IDataSource> source_;
     MediaCodecDecoder decoder_;
-    PlaybackController playback_;
+    PlaybackMetadata metadata_;
+    PlaybackState playbackState_;
+    PlaybackController playback_{decoder_, playbackState_};
 };

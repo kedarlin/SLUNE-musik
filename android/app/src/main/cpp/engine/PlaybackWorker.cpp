@@ -42,6 +42,8 @@ void PlaybackWorker::stop()
 
     stopRequested_ = true;
 
+    condition_.notify_one();
+
     if (thread_.joinable())
     {
         thread_.join();
@@ -55,8 +57,35 @@ void PlaybackWorker::workerLoop()
 {
     while (!stopRequested_)
     {
-        controller_->fillFifo();
+        std::unique_lock<std::mutex> lock(mutex_);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        condition_.wait(
+            lock,
+            [this]
+            {
+                return wakeRequested_ || stopRequested_;
+            });
+        if (stopRequested_)
+        {
+            break;
+        }
+        wakeRequested_.store(false, std::memory_order_release);
+        lock.unlock();
+
+        controller_->fillFifo();
     }
+}
+
+void PlaybackWorker::requestFill()
+{
+    bool expected = false;
+
+    if (!wakeRequested_.compare_exchange_strong(
+            expected,
+            true))
+    {
+        return;
+    }
+
+    condition_.notify_one();
 }

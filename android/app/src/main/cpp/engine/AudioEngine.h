@@ -3,6 +3,8 @@
 #include "../modules/decoder/DecoderModule.h"
 #include "../modules/dsp/DSPModule.h"
 #include "../modules/output/OutputModule.h"
+#include "playback/PlaybackMetadata.h"
+#include "playback/PlaybackState.h"
 
 #include <memory>
 #include <string>
@@ -23,7 +25,11 @@ public:
 
     void pause();
 
+    ProcessResult seek(int64_t positionUs);
+
     void release();
+
+    PlaybackSnapshot playbackSnapshot() const;
 
 private:
     std::unique_ptr<EngineContext> context_;

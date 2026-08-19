@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -12,6 +14,8 @@ extern "C"
     void engine_play();
 
     void engine_pause();
+
+    bool engine_seek(int64_t positionUs);
 
     void engine_release();
 

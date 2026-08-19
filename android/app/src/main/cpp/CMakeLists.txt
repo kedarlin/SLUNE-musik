@@ -23,6 +23,7 @@ add_library(
 
     engine/AudioEngine.cpp
     engine/PlaybackWorker.cpp
+    engine/playback/PlaybackClock.cpp
 
     modules/decoder/DecoderModule.cpp
     modules/output/OutputModule.cpp

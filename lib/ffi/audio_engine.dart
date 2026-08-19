@@ -18,6 +18,9 @@ typedef Release = void Function();
 typedef PauseNative = Void Function();
 typedef Pause = void Function();
 
+typedef SeekNative = Uint8 Function(Int64 positionUs);
+typedef Seek = int Function(int positionUs);
+
 class AudioEngine {
   AudioEngine._();
 
@@ -42,6 +45,12 @@ class AudioEngine {
   late final Release release = _lib.lookupFunction<ReleaseNative, Release>(
     'engine_release',
   );
+
+  late final Seek _seek = _lib.lookupFunction<SeekNative, Seek>('engine_seek');
+
+  bool seek(Duration position) {
+    return _seek(position.inMicroseconds) != 0;
+  }
 
   bool loadTrack(String path) {
     final Pointer<Utf8> nativePath = path.toNativeUtf8();

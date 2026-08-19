@@ -14,6 +14,10 @@ public:
     bool seek(int64_t positionMs);
     void close();
     const ExtractorState &state() const;
+    int sampleRate() const;
+    int channelCount() const;
+    int bitRate() const;
+    int64_t durationUs() const;
 
 private:
     IDataSource *source_ = nullptr;

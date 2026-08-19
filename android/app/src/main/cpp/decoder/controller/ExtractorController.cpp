@@ -140,9 +140,45 @@ void ExtractorController::close()
     LOGI("ExtractorController closed.");
 }
 
-bool ExtractorController::seek(int64_t)
+bool ExtractorController::seek(int64_t positionUs)
 {
-    LOGI("MediaCodecAdapter seek.");
+    if (!state_.extractor)
+    {
+        return false;
+    }
+
+    media_status_t status =
+        AMediaExtractor_seekTo(
+            state_.extractor,
+            positionUs,
+            AMEDIAEXTRACTOR_SEEK_CLOSEST_SYNC);
+
+    if (status != AMEDIA_OK)
+    {
+        LOGE("Failed to seek extractor");
+        return false;
+    }
+    LOGI("Extractor seeked to %lld us", positionUs);
 
     return true;
+}
+
+int ExtractorController::sampleRate() const
+{
+    return state_.sampleRate;
+}
+
+int ExtractorController::channelCount() const
+{
+    return state_.channelCount;
+}
+
+int ExtractorController::bitRate() const
+{
+    return state_.bitRate;
+}
+
+int64_t ExtractorController::durationUs() const
+{
+    return state_.durationUs;
 }

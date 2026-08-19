@@ -8,6 +8,11 @@ AudioEngine::AudioEngine()
 {
 }
 
+PlaybackSnapshot AudioEngine::playbackSnapshot() const
+{
+    return decoder_.playbackSnapshot();
+}
+
 AudioEngine::~AudioEngine()
 {
     release();
@@ -50,6 +55,8 @@ bool AudioEngine::loadTrack(const std::string &path)
     {
         return false;
     }
+    decoder_.initializePlaybackSession();
+
     decoder_.playback().clear();
     decoder_.playback().start();
 
@@ -81,6 +88,11 @@ void AudioEngine::pause()
     context_->playing = false;
 
     LOGI("Playback paused.");
+}
+
+ProcessResult AudioEngine::seek(int64_t positionUs)
+{
+    return decoder_.seek(positionUs);
 }
 
 void AudioEngine::release()

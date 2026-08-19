@@ -47,6 +47,9 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
       engine.loadTrack(fetched.first.uri ?? 'NA');
 
       engine.play();
+
+      await Future<void>.delayed(const Duration(seconds: 3));
+      engine.seek(const Duration(seconds: 30));
     }
 
     // Cache songs
