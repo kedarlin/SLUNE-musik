@@ -95,8 +95,9 @@ class MusicControllerBloc
   ) async {
     emit(MusicSpeedChanging());
 
-    // Native time-stretching isn't implemented yet (roadmap milestone 9);
-    // this only updates UI state until the engine supports it.
+    // Time-stretch is done in-engine via SoundTouch, so this works on any
+    // Android version.
+    _engine.setSpeed(event.speed);
     stateData.speed = event.speed;
     emit(stateData);
   }
@@ -107,8 +108,9 @@ class MusicControllerBloc
   ) async {
     emit(MusicPitchChanging());
 
-    // Native pitch shifting isn't implemented yet (roadmap milestone 10);
-    // this only updates UI state until the engine supports it.
+    // Pitch shifting is done in-engine via SoundTouch, so this works on any
+    // Android version.
+    _engine.setPitch(event.pitch);
     stateData.pitch = event.pitch;
     emit(stateData);
   }

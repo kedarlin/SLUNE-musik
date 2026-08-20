@@ -85,3 +85,23 @@ bool engine_is_playing()
 {
     return g_engine && g_engine->isPlaying();
 }
+
+bool engine_set_speed(float speed)
+{
+    if (!g_engine)
+    {
+        return false;
+    }
+
+    return g_engine->setSpeed(speed) == oboe::Result::OK;
+}
+
+bool engine_set_pitch(float pitch)
+{
+    if (!g_engine)
+    {
+        return false;
+    }
+
+    return g_engine->setPitch(pitch) == oboe::Result::OK;
+}

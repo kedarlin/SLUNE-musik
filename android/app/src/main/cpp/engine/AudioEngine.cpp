@@ -83,6 +83,20 @@ void AudioEngine::play()
     LOGI("Playback started.");
 }
 
+oboe::Result AudioEngine::setSpeed(float speed)
+{
+    decoder_.setPlaybackSpeed(speed);
+
+    return oboe::Result::OK;
+}
+
+oboe::Result AudioEngine::setPitch(float pitch)
+{
+    decoder_.setPlaybackPitch(pitch);
+
+    return oboe::Result::OK;
+}
+
 void AudioEngine::pause()
 {
     if (!context_->initialized)
@@ -97,7 +111,17 @@ void AudioEngine::pause()
 
 ProcessResult AudioEngine::seek(int64_t positionUs)
 {
-    return decoder_.seek(positionUs);
+    // positionUs is in effective (speed-scaled) playback time, matching what
+    // engine_get_position_seconds()/engine_get_duration_seconds() report.
+    // Convert back to media time before it reaches the decoder, which only
+    // understands media time.
+    const float speed = decoder_.playbackSnapshot().playbackSpeed;
+    const float effectiveSpeed = speed > 0.0f ? speed : 1.0f;
+
+    const auto mediaPositionUs =
+        static_cast<int64_t>(static_cast<double>(positionUs) * effectiveSpeed);
+
+    return decoder_.seek(mediaPositionUs);
 }
 
 void AudioEngine::release()

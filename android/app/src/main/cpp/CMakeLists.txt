@@ -12,6 +12,12 @@ set(OBOE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/oboe)
 
 # -----------------------------------------------------------------------------
+# SoundTouch
+# -----------------------------------------------------------------------------
+
+add_subdirectory(third_party/soundtouch)
+
+# -----------------------------------------------------------------------------
 # Muxic Engine
 # -----------------------------------------------------------------------------
 
@@ -73,6 +79,7 @@ target_link_libraries(
     muxic_engine
 
     oboe
+    SoundTouch
 
     ${log-lib}
     ${android-lib}

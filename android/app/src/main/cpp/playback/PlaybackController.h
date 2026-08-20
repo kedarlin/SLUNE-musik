@@ -8,6 +8,8 @@
 #include "../pipeline/ProcessResult.h"
 #include "../engine/playback/PlaybackState.h"
 
+#include "SoundTouch.h"
+
 #include <mutex>
 #include <vector>
 
@@ -19,6 +21,12 @@ public:
     PlaybackController(MediaCodecDecoder &decoder, PlaybackState &playbackState);
 
     bool initialize(IDecoder &decoder);
+
+    void configureStretch(int sampleRate, int channels);
+
+    void setStretchTempo(float tempo);
+
+    void setStretchPitch(float pitch);
 
     ProcessResult render(AudioBuffer &outputBuffer);
 
@@ -44,6 +52,12 @@ private:
     AudioBuffer decodedBuffer_;
 
     std::vector<int16_t> playbackBuffer_;
+
+    std::vector<float> stretchInputBuffer_;
+
+    soundtouch::SoundTouch stretcher_;
+
+    bool stretchConfigured_ = false;
 
     static constexpr size_t kLowWaterMarkFrames = 2048;
 

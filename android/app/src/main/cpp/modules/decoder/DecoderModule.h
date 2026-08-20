@@ -19,6 +19,17 @@ public:
 
     ProcessResult seek(int64_t positionUs);
 
+    void setPlaybackSpeed(float speed)
+    {
+        playbackState_.setPlaybackSpeed(speed);
+        playback_.setStretchTempo(speed);
+    }
+
+    void setPlaybackPitch(float pitch)
+    {
+        playback_.setStretchPitch(pitch);
+    }
+
     void shutdown() override;
 
     void initializePlaybackSession();

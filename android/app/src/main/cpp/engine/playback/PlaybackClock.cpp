@@ -31,11 +31,13 @@ PlaybackSnapshot PlaybackClock::snapshot(
     snapshot.mediaDurationSeconds =
         metadata.durationSeconds();
 
+    const double effectiveSpeed = speed > 0.0f ? speed : 1.0f;
+
     snapshot.playbackPositionSeconds =
-        snapshot.mediaPositionSeconds;
+        snapshot.mediaPositionSeconds / effectiveSpeed;
 
     snapshot.playbackDurationSeconds =
-        snapshot.mediaDurationSeconds;
+        snapshot.mediaDurationSeconds / effectiveSpeed;
 
     snapshot.progress =
         snapshot.mediaDurationSeconds > 0.0

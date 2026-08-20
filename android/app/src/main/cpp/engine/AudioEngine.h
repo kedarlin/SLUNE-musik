@@ -25,6 +25,10 @@ public:
 
     void pause();
 
+    oboe::Result setSpeed(float speed);
+
+    oboe::Result setPitch(float pitch);
+
     ProcessResult seek(int64_t positionUs);
 
     void release();

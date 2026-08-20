@@ -76,6 +76,8 @@ void DecoderModule::initializePlaybackSession()
 
     playback_.clear();
 
+    playback_.configureStretch(metadata_.sampleRate, metadata_.channels);
+
     playback_.start();
 }
 

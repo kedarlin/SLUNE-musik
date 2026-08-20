@@ -25,6 +25,10 @@ extern "C"
 
     bool engine_is_playing();
 
+    bool engine_set_speed(float speed);
+
+    bool engine_set_pitch(float pitch);
+
 #ifdef __cplusplus
 }
 #endif
