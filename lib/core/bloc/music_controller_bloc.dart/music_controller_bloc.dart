@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../../../service/audio_service.dart';
+import '../../../ffi/audio_engine.dart';
+import '../../../service/engine_service.dart';
 import '../../app_constants/app_enums.dart';
 import '../songs_bloc/songs_bloc.dart';
 
@@ -20,22 +21,20 @@ class MusicControllerBloc
     on<PreviousSong>(_onPreviousSong);
     on<ToggleShuffle>(_onToggleShuffle);
     on<ChangeRepeatMode>(_onChangeRepeatMode);
-    on<NativePlaybackEvent>(_onNativeEvent);
-    _listenToNativePlayer();
+    on<PositionUpdated>(_onPositionUpdated);
+    _startPositionPolling();
   }
   final SongsBloc songsBloc;
-  // ignore: unused_field, strict_raw_type, always_specify_types
-  StreamSubscription? _nativeSub;
+  Timer? _positionTimer;
+
+  final AudioEngine _engine = AudioEngine.instance;
 
   final MusicControllerStateData stateData = MusicControllerStateData();
 
-  void _listenToNativePlayer() {
-    _nativeSub = NativeAudio.events().listen(
-      (Map<String, dynamic> data) => add(NativePlaybackEvent(data)),
-      // ignore: always_specify_types
-      onError: (err, stack) {
-        // optional: emit an error state
-      },
+  void _startPositionPolling() {
+    _positionTimer = Timer.periodic(
+      const Duration(milliseconds: 200),
+      (_) => add(PositionUpdated()),
     );
   }
 
@@ -50,66 +49,40 @@ class MusicControllerBloc
 
     emit(MusicLoading());
 
-    await NativeAudio.load(
-      uri: event.song.data,
-      title: event.song.title,
-      id: event.song.id.toString(),
-      artist: event.song.artist,
-    );
+    await AndroidBridge.initialize();
 
-    await NativeAudio.speedPitch(stateData.speed, stateData.pitch);
+    _engine.initialize();
+    _engine.loadTrack(event.song.data);
+    _engine.play();
 
     stateData.isPlaying = true;
-    // ensure position/duration reset or fetched by native events
+    // position/duration are picked up by the next position poll
     stateData.position = 0;
     stateData.duration = 0;
 
     emit(stateData);
   }
 
-  Future<void> _onNativeEvent(
-    NativePlaybackEvent event,
+  Future<void> _onPositionUpdated(
+    PositionUpdated event,
     Emitter<MusicControllerState> emit,
   ) async {
-    final Map<String, dynamic> data = event.data;
-
-    // Handle commands from notification / BT / headset
-    if (data.containsKey('command')) {
-      final dynamic cmd = data['command'];
-      if (cmd == 'next') {
-        add(NextSong());
-        return;
-      }
-      if (cmd == 'previous') {
-        add(PreviousSong());
-        return;
-      }
-    }
-
-    // Normal playback updates
-    stateData.position = data['position'] as int? ?? 0;
-    stateData.duration = data['duration'] as int? ?? 0;
-    stateData.isPlaying = data['isPlaying'] as bool? ?? false;
+    stateData.position = _engine.position.inMilliseconds;
+    stateData.duration = _engine.duration.inMilliseconds;
+    stateData.isPlaying = _engine.isPlaying;
 
     emit(MusicPositionChanging());
     emit(stateData);
-
-    // Media3 Player STATE_ENDED = 4
-    if (data['state'] == 4) {
-      emit(MusicEnded());
-      add(NextSong());
-    }
   }
 
   Future<void> _onPlayPauseToggled(
     PlayPauseToggled event,
     Emitter<MusicControllerState> emit,
   ) async {
-    await NativeAudio.speedPitch(stateData.speed, stateData.pitch);
     if (stateData.isPlaying) {
-      await NativeAudio.pause();
+      _engine.pause();
     } else {
-      await NativeAudio.play();
+      _engine.play();
     }
 
     stateData.isPlaying = !stateData.isPlaying;
@@ -122,7 +95,8 @@ class MusicControllerBloc
   ) async {
     emit(MusicSpeedChanging());
 
-    await NativeAudio.speedPitch(event.speed, stateData.pitch);
+    // Native time-stretching isn't implemented yet (roadmap milestone 9);
+    // this only updates UI state until the engine supports it.
     stateData.speed = event.speed;
     emit(stateData);
   }
@@ -133,7 +107,8 @@ class MusicControllerBloc
   ) async {
     emit(MusicPitchChanging());
 
-    await NativeAudio.speedPitch(stateData.speed, event.pitch);
+    // Native pitch shifting isn't implemented yet (roadmap milestone 10);
+    // this only updates UI state until the engine supports it.
     stateData.pitch = event.pitch;
     emit(stateData);
   }
@@ -144,7 +119,7 @@ class MusicControllerBloc
   ) async {
     emit(MusicSeekLoading());
 
-    await NativeAudio.seek(event.position);
+    _engine.seek(Duration(milliseconds: event.position));
     stateData.position = event.position;
     emit(stateData);
   }
@@ -268,7 +243,7 @@ class MusicControllerBloc
 
   @override
   Future<void> close() {
-    _nativeSub?.cancel();
+    _positionTimer?.cancel();
     return super.close();
   }
 }

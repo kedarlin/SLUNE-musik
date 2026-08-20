@@ -3,9 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../../../ffi/audio_engine.dart';
-import '../../../service/engine_service.dart';
-
 part 'songs_event.dart';
 part 'songs_state.dart';
 
@@ -39,18 +36,6 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
     stateData.songById = <int, SongModel>{
       for (final SongModel s in fetched) s.id: s,
     };
-    if (fetched.isNotEmpty) {
-      await AndroidBridge.initialize();
-
-      final AudioEngine engine = AudioEngine.instance;
-      engine.initialize();
-      engine.loadTrack(fetched.first.uri ?? 'NA');
-
-      engine.play();
-
-      await Future<void>.delayed(const Duration(seconds: 3));
-      engine.seek(const Duration(seconds: 30));
-    }
 
     // Cache songs
     stateData.songs = fetched;

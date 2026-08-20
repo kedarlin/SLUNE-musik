@@ -8,7 +8,12 @@ static std::unique_ptr<AudioEngine> g_engine;
 
 bool engine_seek(int64_t positionUs)
 {
-    return gEngine.seek(positionUs) == ProcessResult::Continue;
+    if (!g_engine)
+    {
+        return false;
+    }
+
+    return g_engine->seek(positionUs) == ProcessResult::Continue;
 }
 
 bool engine_initialize()
@@ -54,4 +59,29 @@ void engine_release()
         g_engine->release();
         g_engine.reset();
     }
+}
+
+double engine_get_position_seconds()
+{
+    if (!g_engine)
+    {
+        return 0.0;
+    }
+
+    return g_engine->playbackSnapshot().playbackPositionSeconds;
+}
+
+double engine_get_duration_seconds()
+{
+    if (!g_engine)
+    {
+        return 0.0;
+    }
+
+    return g_engine->playbackSnapshot().playbackDurationSeconds;
+}
+
+bool engine_is_playing()
+{
+    return g_engine && g_engine->isPlaying();
 }

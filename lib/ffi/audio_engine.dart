@@ -21,6 +21,15 @@ typedef Pause = void Function();
 typedef SeekNative = Uint8 Function(Int64 positionUs);
 typedef Seek = int Function(int positionUs);
 
+typedef GetPositionSecondsNative = Double Function();
+typedef GetPositionSeconds = double Function();
+
+typedef GetDurationSecondsNative = Double Function();
+typedef GetDurationSeconds = double Function();
+
+typedef IsPlayingNative = Uint8 Function();
+typedef IsPlaying = int Function();
+
 class AudioEngine {
   AudioEngine._();
 
@@ -48,9 +57,32 @@ class AudioEngine {
 
   late final Seek _seek = _lib.lookupFunction<SeekNative, Seek>('engine_seek');
 
+  late final GetPositionSeconds _getPositionSeconds = _lib
+      .lookupFunction<GetPositionSecondsNative, GetPositionSeconds>(
+        'engine_get_position_seconds',
+      );
+
+  late final GetDurationSeconds _getDurationSeconds = _lib
+      .lookupFunction<GetDurationSecondsNative, GetDurationSeconds>(
+        'engine_get_duration_seconds',
+      );
+
+  late final IsPlaying _isPlaying = _lib.lookupFunction<
+    IsPlayingNative,
+    IsPlaying
+  >('engine_is_playing');
+
   bool seek(Duration position) {
     return _seek(position.inMicroseconds) != 0;
   }
+
+  Duration get position =>
+      Duration(microseconds: (_getPositionSeconds() * 1000000).round());
+
+  Duration get duration =>
+      Duration(microseconds: (_getDurationSeconds() * 1000000).round());
+
+  bool get isPlaying => _isPlaying() != 0;
 
   bool loadTrack(String path) {
     final Pointer<Utf8> nativePath = path.toNativeUtf8();

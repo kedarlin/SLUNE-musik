@@ -8,6 +8,7 @@
 #include "../pipeline/ProcessResult.h"
 #include "../engine/playback/PlaybackState.h"
 
+#include <mutex>
 #include <vector>
 
 static constexpr int kDefaultCallbackFrames = 256;
@@ -22,6 +23,8 @@ public:
     ProcessResult render(AudioBuffer &outputBuffer);
 
     void clear();
+
+    ProcessResult seek(int64_t positionUs);
 
     bool start();
 
@@ -49,4 +52,6 @@ private:
     PlaybackWorker worker_;
 
     PlaybackState &playbackState_;
+
+    std::mutex decoderMutex_;
 };

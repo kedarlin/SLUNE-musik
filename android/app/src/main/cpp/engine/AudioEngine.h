@@ -31,6 +31,8 @@ public:
 
     PlaybackSnapshot playbackSnapshot() const;
 
+    bool isPlaying() const;
+
 private:
     std::unique_ptr<EngineContext> context_;
     DecoderModule decoder_;

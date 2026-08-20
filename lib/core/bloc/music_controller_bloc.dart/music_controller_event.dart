@@ -36,8 +36,3 @@ class PreviousSong extends MusicControllerEvent {}
 class ToggleShuffle extends MusicControllerEvent {}
 
 class ChangeRepeatMode extends MusicControllerEvent {}
-
-class NativePlaybackEvent extends MusicControllerEvent {
-  NativePlaybackEvent(this.data);
-  final Map<String, dynamic> data;
-}

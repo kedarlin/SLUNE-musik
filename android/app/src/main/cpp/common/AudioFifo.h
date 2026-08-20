@@ -31,11 +31,9 @@ private:
 
     size_t capacityFrames_;
 
-    size_t readFrame_;
+    std::atomic<size_t> readCount_;
 
-    size_t writeFrame_;
-
-    size_t availableFrames_;
+    std::atomic<size_t> writeCount_;
 
     std::vector<int16_t> buffer_;
 };

@@ -18,6 +18,10 @@ bool DecoderModule::loadTrack(const std::string &path)
     LOGI("Loading track:");
     LOGI("%s", path.c_str());
 
+    playback_.stop();
+
+    decoder_.close();
+
     source_.reset();
 
     if (path.rfind("content://", 0) == 0)
@@ -36,6 +40,22 @@ bool DecoderModule::loadTrack(const std::string &path)
     }
 
     return decoder_.open(*source_);
+}
+
+ProcessResult DecoderModule::seek(int64_t positionUs)
+{
+    const ProcessResult result = playback_.seek(positionUs);
+
+    if (result != ProcessResult::Continue)
+    {
+        return result;
+    }
+
+    playbackState_.renderedFrames.store(
+        (positionUs * metadata_.sampleRate) / 1'000'000,
+        std::memory_order_release);
+
+    return result;
 }
 
 void DecoderModule::initializePlaybackSession()

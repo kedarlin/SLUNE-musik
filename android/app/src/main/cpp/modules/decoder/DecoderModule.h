@@ -17,6 +17,8 @@ public:
 
     bool loadTrack(const std::string &path);
 
+    ProcessResult seek(int64_t positionUs);
+
     void shutdown() override;
 
     void initializePlaybackSession();

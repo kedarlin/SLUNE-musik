@@ -19,6 +19,12 @@ extern "C"
 
     void engine_release();
 
+    double engine_get_position_seconds();
+
+    double engine_get_duration_seconds();
+
+    bool engine_is_playing();
+
 #ifdef __cplusplus
 }
 #endif

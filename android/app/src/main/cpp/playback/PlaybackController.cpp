@@ -69,6 +69,29 @@ void PlaybackController::clear()
     decodedBuffer_ = AudioBuffer();
 }
 
+ProcessResult PlaybackController::seek(int64_t positionUs)
+{
+    if (!decoder_)
+    {
+        return ProcessResult::Error;
+    }
+
+    std::lock_guard<std::mutex> lock(decoderMutex_);
+
+    const ProcessResult result = decoder_->seek(positionUs);
+
+    if (result != ProcessResult::Continue)
+    {
+        return result;
+    }
+
+    fifo_.clear();
+
+    worker_.requestFill();
+
+    return ProcessResult::Continue;
+}
+
 bool PlaybackController::start()
 {
     return worker_.start(*this);
@@ -85,6 +108,8 @@ void PlaybackController::fillFifo()
     {
         return;
     }
+
+    std::lock_guard<std::mutex> lock(decoderMutex_);
 
     LOGI("PlaybackWorker filling FIFO...");
 

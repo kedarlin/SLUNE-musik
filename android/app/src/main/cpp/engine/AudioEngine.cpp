@@ -13,6 +13,11 @@ PlaybackSnapshot AudioEngine::playbackSnapshot() const
     return decoder_.playbackSnapshot();
 }
 
+bool AudioEngine::isPlaying() const
+{
+    return context_->playing.load(std::memory_order_acquire);
+}
+
 AudioEngine::~AudioEngine()
 {
     release();

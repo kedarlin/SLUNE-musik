@@ -317,6 +317,13 @@ ProcessResult CodecController::dequeueOutputBuffer(
 
 void CodecController::flush()
 {
+    if (state_.codec)
+    {
+        AMediaCodec_flush(state_.codec);
+    }
+
+    state_.endOfStream = false;
+
     LOGI("CodecController flush");
 }
 
