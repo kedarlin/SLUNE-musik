@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../../ffi/audio_engine.dart';
 import '../../../service/engine_service.dart';
+import '../../../service/muxic_audio_handler.dart';
 import '../../app_constants/app_enums.dart';
 import '../songs_bloc/songs_bloc.dart';
 
@@ -22,10 +23,23 @@ class MusicControllerBloc
     on<ToggleShuffle>(_onToggleShuffle);
     on<ChangeRepeatMode>(_onChangeRepeatMode);
     on<PositionUpdated>(_onPositionUpdated);
+    on<ShuffleAll>(_onShuffleAll);
+    on<PlayNext>(_onPlayNext);
+    on<PlayLater>(_onPlayLater);
+    on<ReorderQueue>(_onReorderQueue);
+    on<RemoveFromQueue>(_onRemoveFromQueue);
+    on<ClearQueue>(_onClearQueue);
+    on<JumpToQueueIndex>(_onJumpToQueueIndex);
+    on<SetSleepTimer>(_onSetSleepTimer);
     _startPositionPolling();
   }
   final SongsBloc songsBloc;
   Timer? _positionTimer;
+  Timer? _sleepTimer;
+
+  MuxicAudioHandler? audioHandler;
+
+  bool _autoAdvancePending = false;
 
   final AudioEngine _engine = AudioEngine.instance;
 
@@ -42,7 +56,6 @@ class MusicControllerBloc
     InitAudio event,
     Emitter<MusicControllerState> emit,
   ) async {
-    // set queue from UI
     stateData.queue = List<SongModel>.from(event.queue);
     stateData.song = event.song;
     stateData.index = event.index;
@@ -55,11 +68,20 @@ class MusicControllerBloc
     _engine.loadTrack(event.song.data);
     _engine.play();
 
+    _autoAdvancePending = false;
+
+    songsBloc.add(RecordRecentlyPlayed(event.song.id));
+
+    audioHandler?.setCurrentSong(
+      event.song,
+      Duration(milliseconds: event.song.duration ?? 0),
+    );
+
     stateData.isPlaying = true;
-    // position/duration are picked up by the next position poll
     stateData.position = 0;
     stateData.duration = 0;
 
+    emit(MusicQueueChanged());
     emit(stateData);
   }
 
@@ -71,8 +93,22 @@ class MusicControllerBloc
     stateData.duration = _engine.duration.inMilliseconds;
     stateData.isPlaying = _engine.isPlaying;
 
+    if (stateData.song != null) {
+      audioHandler?.setPlaybackState(
+        isPlaying: stateData.isPlaying,
+        position: Duration(milliseconds: stateData.position),
+        hasNext: stateData.index < stateData.queue.length - 1,
+        hasPrevious: stateData.index > 0,
+      );
+    }
+
     emit(MusicPositionChanging());
     emit(stateData);
+
+    if (_engine.hasEnded && !_autoAdvancePending) {
+      _autoAdvancePending = true;
+      add(NextSong());
+    }
   }
 
   Future<void> _onPlayPauseToggled(
@@ -95,8 +131,6 @@ class MusicControllerBloc
   ) async {
     emit(MusicSpeedChanging());
 
-    // Time-stretch is done in-engine via SoundTouch, so this works on any
-    // Android version.
     _engine.setSpeed(event.speed);
     stateData.speed = event.speed;
     emit(stateData);
@@ -108,8 +142,6 @@ class MusicControllerBloc
   ) async {
     emit(MusicPitchChanging());
 
-    // Pitch shifting is done in-engine via SoundTouch, so this works on any
-    // Android version.
     _engine.setPitch(event.pitch);
     stateData.pitch = event.pitch;
     emit(stateData);
@@ -133,11 +165,9 @@ class MusicControllerBloc
     stateData.isShuffle = !stateData.isShuffle;
 
     if (stateData.isShuffle) {
-      // Shuffle queue except currently playing song
       final SongModel? current = stateData.song;
       final List<SongModel> songs = List<SongModel>.from(stateData.queue);
 
-      // remove by id
       if (current != null) {
         songs.removeWhere((SongModel s) => s.id == current.id);
       }
@@ -146,7 +176,6 @@ class MusicControllerBloc
       stateData.queue = <SongModel>[if (current != null) current, ...songs];
       stateData.index = 0;
     } else {
-      // Restore original order
       stateData.queue = List<SongModel>.from(songsBloc.stateData.songs);
       stateData.index = stateData.queue.indexWhere(
         (SongModel s) => s.id == stateData.song?.id,
@@ -222,12 +251,13 @@ class MusicControllerBloc
       return;
     }
     final int prev = stateData.index - 1;
-    if (prev >= stateData.queue.length) {
-      if (stateData.repeatMode == RepeatMode.all) {
+    if (prev < 0) {
+      if (stateData.repeatMode == RepeatMode.all &&
+          stateData.queue.isNotEmpty) {
         add(
           InitAudio(
-            song: stateData.queue.first,
-            index: 0,
+            song: stateData.queue.last,
+            index: stateData.queue.length - 1,
             queue: stateData.queue,
           ),
         );
@@ -243,9 +273,182 @@ class MusicControllerBloc
     );
   }
 
+  Future<void> _onShuffleAll(
+    ShuffleAll event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (event.songs.isEmpty) {
+      return;
+    }
+
+    final List<SongModel> shuffled = List<SongModel>.from(event.songs)
+      ..shuffle();
+
+    stateData.isShuffle = true;
+
+    add(InitAudio(song: shuffled.first, index: 0, queue: shuffled));
+  }
+
+  Future<void> _onPlayNext(
+    PlayNext event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (stateData.queue.isEmpty) {
+      add(InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]));
+      return;
+    }
+
+    final int insertAt = (stateData.index + 1).clamp(0, stateData.queue.length);
+    stateData.queue.insert(insertAt, event.song);
+
+    emit(MusicQueueChanged());
+    emit(stateData);
+  }
+
+  Future<void> _onPlayLater(
+    PlayLater event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (stateData.queue.isEmpty) {
+      add(InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]));
+      return;
+    }
+
+    stateData.queue.add(event.song);
+
+    emit(MusicQueueChanged());
+    emit(stateData);
+  }
+
+  Future<void> _onReorderQueue(
+    ReorderQueue event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    final int newIndex = event.newIndex > event.oldIndex
+        ? event.newIndex - 1
+        : event.newIndex;
+
+    if (event.oldIndex < 0 || event.oldIndex >= stateData.queue.length) {
+      return;
+    }
+
+    final SongModel moved = stateData.queue.removeAt(event.oldIndex);
+    stateData.queue.insert(newIndex, moved);
+
+    if (event.oldIndex == stateData.index) {
+      stateData.index = newIndex;
+    } else if (event.oldIndex < stateData.index &&
+        newIndex >= stateData.index) {
+      stateData.index -= 1;
+    } else if (event.oldIndex > stateData.index &&
+        newIndex <= stateData.index) {
+      stateData.index += 1;
+    }
+
+    emit(MusicQueueChanged());
+    emit(stateData);
+  }
+
+  Future<void> _onRemoveFromQueue(
+    RemoveFromQueue event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (event.index < 0 || event.index >= stateData.queue.length) {
+      return;
+    }
+
+    final bool removingCurrent = event.index == stateData.index;
+
+    stateData.queue.removeAt(event.index);
+
+    if (stateData.queue.isEmpty) {
+      add(ClearQueue());
+      return;
+    }
+
+    if (removingCurrent) {
+      final int nextIndex = event.index.clamp(0, stateData.queue.length - 1);
+      add(
+        InitAudio(
+          song: stateData.queue[nextIndex],
+          index: nextIndex,
+          queue: stateData.queue,
+        ),
+      );
+      return;
+    }
+
+    if (event.index < stateData.index) {
+      stateData.index -= 1;
+    }
+
+    emit(MusicQueueChanged());
+    emit(stateData);
+  }
+
+  Future<void> _onClearQueue(
+    ClearQueue event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    _engine.pause();
+
+    stateData.queue = <SongModel>[];
+    stateData.song = null;
+    stateData.index = 0;
+    stateData.isPlaying = false;
+    stateData.position = 0;
+    stateData.duration = 0;
+
+    emit(MusicQueueChanged());
+    emit(stateData);
+  }
+
+  Future<void> _onJumpToQueueIndex(
+    JumpToQueueIndex event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (event.index < 0 || event.index >= stateData.queue.length) {
+      return;
+    }
+
+    add(
+      InitAudio(
+        song: stateData.queue[event.index],
+        index: event.index,
+        queue: stateData.queue,
+      ),
+    );
+  }
+
+  Future<void> _onSetSleepTimer(
+    SetSleepTimer event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    _sleepTimer?.cancel();
+
+    if (event.duration == null) {
+      _sleepTimer = null;
+      stateData.sleepTimerEndsAt = null;
+      emit(stateData);
+      return;
+    }
+
+    stateData.sleepTimerEndsAt = DateTime.now().add(event.duration!);
+
+    _sleepTimer = Timer(event.duration!, () {
+      _engine.pause();
+      stateData.isPlaying = false;
+      stateData.sleepTimerEndsAt = null;
+      add(PositionUpdated());
+    });
+
+    emit(stateData);
+  }
+
   @override
   Future<void> close() {
     _positionTimer?.cancel();
+    _sleepTimer?.cancel();
     return super.close();
   }
 }

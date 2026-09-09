@@ -8,15 +8,12 @@
 
 bool DecoderModule::initialize(EngineContext &)
 {
-    LOGI("DecoderModule initialized.");
     playback_.initialize(decoder_);
     return true;
 }
 
 bool DecoderModule::loadTrack(const std::string &path)
 {
-    LOGI("Loading track:");
-    LOGI("%s", path.c_str());
 
     playback_.stop();
 
@@ -83,7 +80,6 @@ void DecoderModule::initializePlaybackSession()
 
 void DecoderModule::shutdown()
 {
-    LOGI("DecoderModule shutdown.");
 }
 
 PlaybackSnapshot DecoderModule::playbackSnapshot() const

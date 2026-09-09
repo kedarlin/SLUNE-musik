@@ -35,7 +35,6 @@ bool FileDataSource::open(const std::string &uri)
     length_ = static_cast<int64_t>(fileStat.st_size);
     path_ = uri;
 
-    LOGI("Opened file: %s", uri.c_str());
     return true;
 }
 

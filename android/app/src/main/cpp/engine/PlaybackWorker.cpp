@@ -2,8 +2,6 @@
 
 #include "../playback/PlaybackController.h"
 
-#include "../common/Logger.h"
-
 #include <chrono>
 
 PlaybackWorker::PlaybackWorker() = default;
@@ -28,8 +26,6 @@ bool PlaybackWorker::start(PlaybackController &controller)
 
     thread_ = std::thread(&PlaybackWorker::workerLoop, this);
 
-    LOGI("PlaybackWorker started.");
-
     return true;
 }
 
@@ -50,7 +46,6 @@ void PlaybackWorker::stop()
     }
 
     running_ = false;
-    LOGI("PlaybackWOrker stoped.");
 }
 
 void PlaybackWorker::workerLoop()

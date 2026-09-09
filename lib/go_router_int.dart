@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:nested/nested.dart';
 
 import 'core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
+import 'core/bloc/playlists_bloc/playlists_bloc.dart';
 import 'core/bloc/songs_bloc/songs_bloc.dart';
 import 'core/routes/app_routes.dart';
 import 'view/home_page.dart';
+import 'view/playlist_detail_page.dart';
 
 class GoRouterInit {
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -14,6 +16,9 @@ class GoRouterInit {
   static final RouteObserver<ModalRoute<dynamic>> routeObserver =
       RouteObserver<ModalRoute<dynamic>>();
   static Object? initialExtra;
+
+  static late final SongsBloc songsBloc;
+  static late final MusicControllerBloc musicControllerBloc;
 
   static GoRouter router = GoRouter(
     debugLogDiagnostics: true,
@@ -25,14 +30,12 @@ class GoRouterInit {
         builder: (BuildContext context, GoRouterState state, Widget child) {
           return MultiBlocProvider(
             providers: <SingleChildWidget>[
-              BlocProvider<SongsBloc>(
-                create: (BuildContext context) => SongsBloc(),
+              BlocProvider<SongsBloc>.value(value: songsBloc),
+              BlocProvider<MusicControllerBloc>.value(
+                value: musicControllerBloc,
               ),
-              BlocProvider<MusicControllerBloc>(
-                create:
-                    (BuildContext context) => MusicControllerBloc(
-                      BlocProvider.of<SongsBloc>(context),
-                    ),
+              BlocProvider<PlaylistsBloc>(
+                create: (BuildContext context) => PlaylistsBloc(),
               ),
             ],
             child: child,
@@ -43,6 +46,14 @@ class GoRouterInit {
             path: HomePage.routePath,
             builder:
                 (BuildContext context, GoRouterState state) => const HomePage(),
+          ),
+          GoRoute(
+            path: '${HomePage.routePath}/playlist/:id',
+            builder:
+                (BuildContext context, GoRouterState state) =>
+                    PlaylistDetailPage(
+                      playlistId: state.pathParameters['id']!,
+                    ),
           ),
         ],
       ),

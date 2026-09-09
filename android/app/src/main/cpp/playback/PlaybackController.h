@@ -10,6 +10,7 @@
 
 #include "SoundTouch.h"
 
+#include <atomic>
 #include <mutex>
 #include <vector>
 
@@ -58,6 +59,8 @@ private:
     soundtouch::SoundTouch stretcher_;
 
     bool stretchConfigured_ = false;
+
+    std::atomic<bool> decoderReachedEnd_{false};
 
     static constexpr size_t kLowWaterMarkFrames = 2048;
 

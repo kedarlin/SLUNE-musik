@@ -13,7 +13,7 @@ class Utils {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      // useSafeArea: false,
+      enableDrag: false,
       backgroundColor: AppColors.transparent,
       barrierColor: AppColors.transparent,
       shape: const RoundedRectangleBorder(

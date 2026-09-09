@@ -26,7 +26,6 @@ bool ExtractorController::open(IDataSource &source)
         return false;
     }
 
-    LOGI("Extractor initialized");
 
     return true;
 }
@@ -41,7 +40,6 @@ bool ExtractorController::readMetaData()
     size_t trackCount = AMediaExtractor_getTrackCount(
         state_.extractor);
 
-    LOGI("Track Count : %zu", trackCount);
 
     for (size_t i = 0; i < trackCount; i++)
     {
@@ -68,8 +66,6 @@ bool ExtractorController::readMetaData()
                 state_.extractor,
                 i);
 
-            LOGI("Selected audio track : %zu", i);
-            LOGI("Mime : %s", mime);
             break;
         }
     }
@@ -101,17 +97,9 @@ bool ExtractorController::readMetaData()
         AMEDIAFORMAT_KEY_DURATION,
         &state_.durationUs);
 
-    LOGI("Sample Rate : %d",
-         state_.sampleRate);
 
-    LOGI("Channels : %d",
-         state_.channelCount);
 
-    LOGI("Bitrate : %d",
-         state_.bitRate);
 
-    LOGI("Duration : %lld us",
-         (long long)state_.durationUs);
 
     return true;
 }
@@ -137,7 +125,6 @@ void ExtractorController::close()
 
     source_ = nullptr;
 
-    LOGI("ExtractorController closed.");
 }
 
 bool ExtractorController::seek(int64_t positionUs)
@@ -158,7 +145,6 @@ bool ExtractorController::seek(int64_t positionUs)
         LOGE("Failed to seek extractor");
         return false;
     }
-    LOGI("Extractor seeked to %lld us", positionUs);
 
     return true;
 }

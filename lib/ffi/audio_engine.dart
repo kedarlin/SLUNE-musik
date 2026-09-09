@@ -30,11 +30,17 @@ typedef GetDurationSeconds = double Function();
 typedef IsPlayingNative = Uint8 Function();
 typedef IsPlaying = int Function();
 
+typedef HasEndedNative = Uint8 Function();
+typedef HasEnded = int Function();
+
 typedef SetSpeedNative = Uint8 Function(Float speed);
 typedef SetSpeed = int Function(double speed);
 
 typedef SetPitchNative = Uint8 Function(Float pitch);
 typedef SetPitch = int Function(double pitch);
+
+typedef SetVolumeNative = Void Function(Float volume);
+typedef SetVolume = void Function(double volume);
 
 class AudioEngine {
   AudioEngine._();
@@ -78,18 +84,24 @@ class AudioEngine {
     IsPlaying
   >('engine_is_playing');
 
+  late final HasEnded _hasEnded = _lib.lookupFunction<
+    HasEndedNative,
+    HasEnded
+  >('engine_has_ended');
+
   late final SetSpeed _setSpeed = _lib
       .lookupFunction<SetSpeedNative, SetSpeed>('engine_set_speed');
 
   late final SetPitch _setPitch = _lib
       .lookupFunction<SetPitchNative, SetPitch>('engine_set_pitch');
 
-  /// Pitch-preserving time-stretch, done in-engine via SoundTouch.
+  late final SetVolume setVolume = _lib
+      .lookupFunction<SetVolumeNative, SetVolume>('engine_set_volume');
+
   bool setSpeed(double speed) {
     return _setSpeed(speed) != 0;
   }
 
-  /// Pitch shifting, done in-engine via SoundTouch.
   bool setPitch(double pitch) {
     return _setPitch(pitch) != 0;
   }
@@ -105,6 +117,8 @@ class AudioEngine {
       Duration(microseconds: (_getDurationSeconds() * 1000000).round());
 
   bool get isPlaying => _isPlaying() != 0;
+
+  bool get hasEnded => _hasEnded() != 0;
 
   bool loadTrack(String path) {
     final Pointer<Utf8> nativePath = path.toNativeUtf8();

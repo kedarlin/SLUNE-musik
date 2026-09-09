@@ -15,6 +15,7 @@ struct PlaybackSnapshot
     double progress = 0.0;
     float playbackSpeed = 1.0f;
     int64_t renderedFrames = 0;
+    bool hasEnded = false;
 };
 
 class PlaybackClock

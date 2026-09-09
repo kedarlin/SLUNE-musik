@@ -86,6 +86,16 @@ bool engine_is_playing()
     return g_engine && g_engine->isPlaying();
 }
 
+bool engine_has_ended()
+{
+    if (!g_engine)
+    {
+        return false;
+    }
+
+    return g_engine->playbackSnapshot().hasEnded;
+}
+
 bool engine_set_speed(float speed)
 {
     if (!g_engine)
@@ -104,4 +114,12 @@ bool engine_set_pitch(float pitch)
     }
 
     return g_engine->setPitch(pitch) == oboe::Result::OK;
+}
+
+void engine_set_volume(float volume)
+{
+    if (g_engine)
+    {
+        g_engine->setVolume(volume);
+    }
 }

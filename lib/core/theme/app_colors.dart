@@ -1,20 +1,27 @@
 import 'dart:ui';
 
 class AppColors {
-  static const Color darkBlue = Color(0xFF131f2b);
-  static const Color transparent = Color(0x00131f2b);
+  static const Color background = Color(0xFF000000);
+  static const Color surface = Color(0xFF1C1C1E);
+  static const Color surfaceHigh = Color(0xFF2C2C2E);
+  static const Color divider = Color(0xFF2A2A2C);
+
+  static const Color accent = Color(0xFF1D8BE2);
+
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFF9E9E9E);
+  static const Color textTertiary = Color(0xFF6E6E73);
+
+  static const Color disabled = Color(0xFF4A4A4E);
+
+  static const Color iconBg = Color(0xFFF5E9FF);
+  static const Color iconColor = Color(0xFFB85FFF);
+
+  static const Color vinylEdge = Color(0xFF4A4A4E);
+  static const Color vinylGroove = Color(0xFF2A2A2C);
+  static const Color vinylCenter = Color(0xFF858585);
+  static const Color vinylNote = Color(0xFF6E6F74);
+
   static const Color white = Color(0xFFFFFFFF);
-  static const Color lightBlue = Color(0xFF1d8be2);
-  static const Color blue1 = Color(0xFF334f6e);
-  static const Color grey1 = Color(0xFF283343);
-  static const Color grey2 = Color(0xFF87929e);
-  static const Color grey3 = Color(0xFF858585);
-  static const Color grey4 = Color(0xFF6e6f74);
-  static const Color grey5 = Color(0xFF3b3d43);
-  static const Color grey6 = Color(0xFF595b61);
-  static const Color grey7 = Color(0xFF7b8795);
-  static const Color iconBg = Color(0xFFf5e9ff);
-  static const Color iconColor = Color(0xFFb85fff);
-  static const Color blackBg = Color(0xFF090b10);
-  static const Color bottomSheetBg = Color(0xFF22394d);
+  static const Color transparent = Color(0x00000000);
 }

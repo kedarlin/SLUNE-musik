@@ -1,7 +1,5 @@
 #include "MediaCodecAdapter.h"
 
-#include "../../common/Logger.h"
-
 MediaCodecAdapter::MediaCodecAdapter()
 {
 }
@@ -28,8 +26,6 @@ bool MediaCodecAdapter::open(IDataSource &source)
         return false;
     }
 
-    LOGI("MediaCodecAdapter opened.");
-
     return true;
 }
 
@@ -37,7 +33,6 @@ void MediaCodecAdapter::close()
 {
     codec_.close();
     extractor_.close();
-    LOGI("MediaCodecAdapter closed.");
 }
 
 ProcessResult MediaCodecAdapter::decode(AudioBuffer &buffer)
@@ -47,7 +42,6 @@ ProcessResult MediaCodecAdapter::decode(AudioBuffer &buffer)
 
 bool MediaCodecAdapter::seek(int64_t positionUs)
 {
-    LOGI("Seeking to %lld us", static_cast<long long>(positionUs));
 
     codec_.flush();
 

@@ -49,10 +49,6 @@ flutter {
     source = "../.."
 }
 
-dependencies {
-    implementation("androidx.media3:media3-exoplayer:1.8.0")
-    implementation("androidx.media3:media3-session:1.8.0")
-    implementation("androidx.media3:media3-ui:1.8.0")
-    implementation("androidx.media3:media3-common:1.8.0")
-    implementation("com.google.guava:guava:32.0.1-android")
-}
+// media3/ExoPlayer was dropped along with MusicPlayerService - playback is
+// handled by the native Oboe engine, and the media session by audio_service.
+dependencies {}

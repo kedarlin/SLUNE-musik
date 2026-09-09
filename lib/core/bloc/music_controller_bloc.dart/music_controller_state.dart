@@ -5,22 +5,21 @@ class MusicControllerState {}
 class MusicControllerInitial extends MusicControllerState {}
 
 class MusicControllerStateData extends MusicControllerState {
-  double speed = 0.875;
-  double pitch = 0.925;
+  double speed = 1.0;
+  double pitch = 1.0;
   int position = 0;
   int duration = 0;
   bool isPlaying = false;
 
-  // NEW playback logic
   bool isShuffle = false;
   RepeatMode repeatMode = RepeatMode.off;
 
-  // Current item
   SongModel? song;
   int index = 0;
 
-  // Active queue (normal or shuffled)
   List<SongModel> queue = <SongModel>[];
+
+  DateTime? sleepTimerEndsAt;
 }
 
 class MusicLoading extends MusicControllerState {}
@@ -35,4 +34,4 @@ class MusicSeekLoading extends MusicControllerState {}
 
 class MusicPositionChanging extends MusicControllerState {}
 
-class MusicEnded extends MusicControllerState {}
+class MusicQueueChanged extends MusicControllerState {}

@@ -1,6 +1,5 @@
 #include "TrackSourceNode.h"
 
-#include "../../common/Logger.h"
 #include "../../common/AudioConverter.h"
 
 // namespace
@@ -18,13 +17,5 @@ TrackSourceNode::TrackSourceNode(
 ProcessResult TrackSourceNode::process(
     AudioBuffer &buffer)
 {
-    static bool logged = false;
-
-    if (!logged)
-    {
-        LOGI("TrackSourceNode processing.");
-        logged = true;
-    }
-
     return playback_.render(buffer);
 }

@@ -1,6 +1,5 @@
 #include "AndroidContentResolver.h"
 
-#include "../../common/Logger.h"
 #include "AndroidContext.h"
 #include "JniUtils.h"
 
@@ -199,8 +198,6 @@ AndroidContentResolver::openFileDescriptor(
     }
 
     result.fileDescriptor = fd;
-
-    LOGI("Content URI opened successfully.");
 
     // -------------------------------------------------------------------------
     // Cleanup

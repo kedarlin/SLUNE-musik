@@ -24,7 +24,6 @@ bool CodecController::initialize(
         return false;
     }
 
-    LOGI("Creating codec for: %s", mime);
 
     state_.codec =
         AMediaCodec_createDecoderByType(mime);
@@ -36,7 +35,6 @@ bool CodecController::initialize(
         return false;
     }
 
-    LOGI("Codec created.");
 
     media_status_t status =
         AMediaCodec_configure(
@@ -55,7 +53,6 @@ bool CodecController::initialize(
 
     state_.configured = true;
 
-    LOGI("Codec configured.");
 
     status =
         AMediaCodec_start(
@@ -70,22 +67,30 @@ bool CodecController::initialize(
 
     state_.started = true;
 
-    LOGI("Codec started.");
 
     return true;
 }
 
 ProcessResult CodecController::decode(const ExtractorState &extractor, AudioBuffer &buffer)
 {
-    static bool logged = false;
-    if (!logged)
-    {
-
-        LOGI("CodecController::decode()");
-        logged = true;
-    }
     if (!queueInputBuffer(extractor))
     {
+        if (state_.endOfStream)
+        {
+            // The extractor is exhausted, but the codec may still be
+            // holding buffered output frames from before EOS was queued -
+            // keep draining until it reports no more data.
+            const ProcessResult drainResult =
+                dequeueOutputBuffer(extractor, buffer);
+
+            if (drainResult == ProcessResult::Continue)
+            {
+                return ProcessResult::Continue;
+            }
+
+            return ProcessResult::EndOfStream;
+        }
+
         return ProcessResult::NoData;
     }
 
@@ -104,7 +109,6 @@ bool CodecController::queueInputBuffer(
         return false;
     }
 
-    LOGI("Input buffer index: %zd", buffers_.inputIndex);
 
     size_t bufferSize = 0;
 
@@ -124,7 +128,6 @@ bool CodecController::queueInputBuffer(
 
     if (sampleSize < 0)
     {
-        LOGI("End of stream.");
 
         AMediaCodec_queueInputBuffer(
             state_.codec,
@@ -153,11 +156,9 @@ bool CodecController::queueInputBuffer(
         return false;
     }
 
-    LOGI("Queued %zd bytes.", sampleSize);
 
     AMediaExtractor_advance(extractor.extractor);
 
-    LOGI("Extractor advanced.");
 
     return true;
 }
@@ -166,7 +167,6 @@ ProcessResult CodecController::dequeueOutputBuffer(
     const ExtractorState &extractor,
     AudioBuffer &buffer)
 {
-    LOGI("dequeueOutputBuffer()");
 
     buffers_.outputIndex =
         AMediaCodec_dequeueOutputBuffer(
@@ -174,20 +174,16 @@ ProcessResult CodecController::dequeueOutputBuffer(
             &buffers_.bufferInfo,
             0);
 
-    LOGI("Output buffer index: %zd", buffers_.outputIndex);
 
     switch (buffers_.outputIndex)
     {
     case AMEDIACODEC_INFO_TRY_AGAIN_LATER:
-        LOGI("TRY_AGAIN_LATER");
         return ProcessResult::NoData;
 
     case AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED:
-        LOGI("OUTPUT_FORMAT_CHANGED");
         return ProcessResult::NoData;
 
     case AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED:
-        LOGI("OUTPUT_BUFFERS_CHANGED");
         return ProcessResult::NoData;
 
     default:
@@ -200,34 +196,6 @@ ProcessResult CodecController::dequeueOutputBuffer(
 
         return ProcessResult::NoData;
     }
-
-    // AMediaFormat *format =
-    //     AMediaCodec_getOutputFormat(state_.codec);
-
-    // int32_t sampleRate = 0;
-    // int32_t channels = 0;
-    // int32_t pcmEncoding = 0;
-
-    // AMediaFormat_getInt32(
-    //     format,
-    //     AMEDIAFORMAT_KEY_SAMPLE_RATE,
-    //     &sampleRate);
-
-    // AMediaFormat_getInt32(
-    //     format,
-    //     AMEDIAFORMAT_KEY_CHANNEL_COUNT,
-    //     &channels);
-
-    // AMediaFormat_getInt32(
-    //     format,
-    //     AMEDIAFORMAT_KEY_PCM_ENCODING,
-    //     &pcmEncoding);
-
-    // LOGI(
-    //     "Codec Output: %d Hz, %d channels, PCM encoding %d",
-    //     sampleRate,
-    //     channels,
-    //     pcmEncoding);
 
     size_t outputBufferSize = 0;
 
@@ -249,20 +217,10 @@ ProcessResult CodecController::dequeueOutputBuffer(
         return ProcessResult::NoData;
     }
 
-    LOGI(
-        "PCM Size: %d  Offset: %d  Flags: %d  Time: %lld",
-        buffers_.bufferInfo.size,
-        buffers_.bufferInfo.offset,
-        buffers_.bufferInfo.flags,
-        (long long)buffers_.bufferInfo.presentationTimeUs);
 
-    LOGI(
-        "Decoded %d bytes.",
-        buffers_.bufferInfo.size);
 
     if (buffers_.bufferInfo.size == 0)
     {
-        LOGI("Empty PCM buffer.");
 
         AMediaCodec_releaseOutputBuffer(
             state_.codec,
@@ -280,10 +238,6 @@ ProcessResult CodecController::dequeueOutputBuffer(
         sampleCount /
         extractor.channelCount;
 
-    LOGI(
-        "Frames: %d  Samples: %d",
-        frameCount,
-        sampleCount);
 
     pcmBuffer_.resize(sampleCount);
 
@@ -292,13 +246,6 @@ ProcessResult CodecController::dequeueOutputBuffer(
         outputBuffer,
         buffers_.bufferInfo.size);
 
-    LOGI(
-        "Copied %zu PCM bytes into engine buffer.",
-        pcmBuffer_.size());
-
-    const int16_t *pcm =
-        reinterpret_cast<const int16_t *>(
-            pcmBuffer_.data());
 
     buffer.setData(
         pcmBuffer_.data(),
@@ -324,7 +271,6 @@ void CodecController::flush()
 
     state_.endOfStream = false;
 
-    LOGI("CodecController flush");
 }
 
 void CodecController::close()
@@ -344,5 +290,4 @@ void CodecController::close()
     state_.started = false;
     buffers_ = {};
 
-    LOGI("CodecController closed.");
 }

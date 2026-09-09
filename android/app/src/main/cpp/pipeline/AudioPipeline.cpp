@@ -1,7 +1,5 @@
 #include "AudioPipeline.h"
 
-#include "../common/Logger.h"
-
 void AudioPipeline::setSource(
     std::unique_ptr<AudioSourceNode> source)
 {
@@ -21,18 +19,7 @@ void AudioPipeline::process(
     float sampleRate)
 {
 
-    static bool logged = false;
-    if (!logged)
-    {
-        LOGI("Pipeline is processing.");
-        logged = true;
-    }
-
     AudioBuffer audioBuffer(buffer, numFrames, channelCount, sampleRate, SampleFormat::Float32);
-    LOGI(
-        "Pipeline wants %d frames (%d samples)",
-        audioBuffer.frames,
-        audioBuffer.sampleCount());
 
     if (source_)
     {

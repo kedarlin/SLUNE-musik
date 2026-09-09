@@ -19,6 +19,7 @@ PlaybackSnapshot PlaybackClock::snapshot(
 
     snapshot.renderedFrames = renderedFrames;
     snapshot.playbackSpeed = speed;
+    snapshot.hasEnded = state.ended.load(std::memory_order_acquire);
 
     if (sampleRate <= 0)
     {

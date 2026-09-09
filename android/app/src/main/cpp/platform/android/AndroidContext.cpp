@@ -1,7 +1,5 @@
 #include "AndroidContext.h"
 
-#include "../../common/Logger.h"
-
 AndroidContext &AndroidContext::instance()
 {
     static AndroidContext context;
@@ -25,7 +23,6 @@ void AndroidContext::setApplicationContext(
 
     applicationContext_ = env->NewGlobalRef(context);
 
-    LOGI("Application context stored.");
 }
 
 JavaVM *AndroidContext::javaVm() const

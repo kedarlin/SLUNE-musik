@@ -3,7 +3,6 @@
 #include "../context/EngineContext.h"
 #include "../pipeline/source/SineGeneratorNode.h"
 #include "../pipeline/AudioNode.h"
-#include "../common/Logger.h"
 
 #include <algorithm>
 #include <memory>
@@ -24,13 +23,6 @@ oboe::DataCallbackResult AudioCallback::onAudioReady(
     void *audioData,
     int32_t numFrames)
 {
-    static bool logged = false;
-
-    if (!logged)
-    {
-        LOGI("Audio callback is running.");
-        logged = true;
-    }
     auto *output = static_cast<float *>(audioData);
 
     const int32_t channelCount = audioStream->getChannelCount();
@@ -50,6 +42,22 @@ oboe::DataCallbackResult AudioCallback::onAudioReady(
         numFrames,
         channelCount,
         static_cast<float>(audioStream->getSampleRate()));
+
+    // Master gain, used for ducking when another app takes transient audio
+    // focus. Just an atomic load and a multiply - no allocation, so it stays
+    // real-time safe. Skipped entirely at unity gain.
+    const float volume =
+        context_.volume.load(std::memory_order_relaxed);
+
+    if (volume != 1.0f)
+    {
+        const int32_t sampleCount = numFrames * channelCount;
+
+        for (int32_t i = 0; i < sampleCount; ++i)
+        {
+            output[i] *= volume;
+        }
+    }
 
     return oboe::DataCallbackResult::Continue;
 }

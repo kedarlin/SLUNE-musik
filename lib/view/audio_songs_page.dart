@@ -3,16 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/bloc/songs_bloc/songs_bloc.dart';
 import '../core/common_widgets.dart/loader_widget.dart';
+import '../core/common_widgets.dart/song_options_sheet.dart';
+import '../core/common_widgets.dart/song_tile.dart';
+import '../core/common_widgets.dart/sort_options_dialog.dart';
 import '../core/theme/app_colors.dart';
-import '../core/utils/utils.dart';
-import '../service/audio_service.dart';
 
 class AllSongsPage extends StatefulWidget {
   const AllSongsPage({super.key});
@@ -22,7 +22,6 @@ class AllSongsPage extends StatefulWidget {
 }
 
 class _AllSongsPageState extends State<AllSongsPage> {
-  late MusicControllerBloc _musicControllerBloc;
   late SongsBloc _songsBloc;
   bool isSearching = false;
   final TextEditingController searchController = TextEditingController();
@@ -32,7 +31,6 @@ class _AllSongsPageState extends State<AllSongsPage> {
   @override
   void initState() {
     super.initState();
-    _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
     _songsBloc.add(FetchSongs());
     _requestPermissionAndLoadSongs();
@@ -54,6 +52,43 @@ class _AllSongsPageState extends State<AllSongsPage> {
         return;
       }
     }
+
+    if (!await Permission.notification.isGranted) {
+      await Permission.notification.request();
+    }
+  }
+
+  Future<void> _openSortDialog() async {
+    final SortOptionsResult? result = await SortOptionsDialog.show(
+      context,
+      field: _songsBloc.stateData.sortField,
+      ascending: _songsBloc.stateData.sortAscending,
+      hideUnderOneMinute: _songsBloc.stateData.hideUnderOneMinute,
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    _songsBloc.add(
+      ApplySongSort(
+        field: result.field,
+        ascending: result.ascending,
+        hideUnderOneMinute: result.hideUnderOneMinute,
+      ),
+    );
+  }
+
+  void _shuffleAll() {
+    final List<SongModel> list = isSearching
+        ? _songsBloc.stateData.searchSongs
+        : _songsBloc.stateData.songs;
+
+    if (list.isEmpty) {
+      return;
+    }
+
+    context.read<MusicControllerBloc>().add(ShuffleAll(list));
   }
 
   @override
@@ -61,94 +96,115 @@ class _AllSongsPageState extends State<AllSongsPage> {
     return Column(
       children: <Widget>[
         Container(
-          height: 64.h,
-          padding: EdgeInsets.all(12.w),
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           child: Row(
             spacing: 8.w,
             children: <Widget>[
-              Flexible(
-                child: SearchBar(
-                  leading: Icon(
-                    Icons.search_rounded,
-                    size: 20.sp,
-                    color: AppColors.grey7,
-                  ),
-                  focusNode: _searchFocusNode,
-                  controller: searchController,
-                  hintText: 'Search songs...',
-                  hintStyle: WidgetStatePropertyAll<TextStyle>(
-                    TextStyle(color: AppColors.grey7, fontSize: 16.sp),
-                  ),
-                  shadowColor: const WidgetStatePropertyAll<Color>(
-                    AppColors.transparent,
-                  ),
-                  padding: WidgetStatePropertyAll<EdgeInsets>(
-                    EdgeInsets.symmetric(horizontal: 12.w),
-                  ),
-                  backgroundColor: const WidgetStatePropertyAll<Color>(
-                    AppColors.grey1,
-                  ),
-                  textStyle: WidgetStatePropertyAll<TextStyle>(
-                    TextStyle(
-                      fontSize: 14.sp,
-                      color: AppColors.white,
-                      fontWeight: FontWeight.w500,
+              Expanded(
+                child: SizedBox(
+                  height: 44.h,
+                  child: SearchBar(
+                    leading: Icon(
+                      Icons.search_rounded,
+                      size: 20.sp,
+                      color: AppColors.textSecondary,
                     ),
-                  ),
-                  onTapOutside: (PointerDownEvent event) {
-                    _searchFocusNode.unfocus();
-                    FocusScope.of(context).unfocus();
-                  },
-                  shape: WidgetStatePropertyAll<OutlinedBorder>(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
+                    focusNode: _searchFocusNode,
+                    controller: searchController,
+                    hintText: 'Search songs...',
+                    hintStyle: WidgetStatePropertyAll<TextStyle>(
+                      TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14.sp,
+                      ),
                     ),
-                  ),
-                  trailing: <Widget>[
-                    IconButton(
-                      onPressed: () {
-                        if (searchController.text.isNotEmpty) {
-                          searchController.clear();
-                        } else {}
-                      },
-                      icon:
-                          isSearching
-                              ? Icon(
-                                Icons.close,
-                                size: 24.sp,
-                                color: AppColors.grey7,
-                              )
-                              : const Text(''),
+                    shadowColor: const WidgetStatePropertyAll<Color>(
+                      AppColors.transparent,
                     ),
-                  ],
-                  onChanged: (String value) {
-                    if (_debounce?.isActive ?? false) {
-                      _debounce!.cancel();
-                    }
+                    padding: WidgetStatePropertyAll<EdgeInsets>(
+                      EdgeInsets.symmetric(horizontal: 12.w),
+                    ),
+                    backgroundColor: const WidgetStatePropertyAll<Color>(
+                      AppColors.surface,
+                    ),
+                    textStyle: WidgetStatePropertyAll<TextStyle>(
+                      TextStyle(
+                        fontSize: 14.sp,
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onTapOutside: (PointerDownEvent event) {
+                      _searchFocusNode.unfocus();
+                      FocusScope.of(context).unfocus();
+                    },
+                    shape: WidgetStatePropertyAll<OutlinedBorder>(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    trailing: <Widget>[
+                      if (isSearching)
+                        IconButton(
+                          onPressed: searchController.clear,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(
+                            Icons.close,
+                            size: 20.sp,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                    onChanged: (String value) {
+                      if (_debounce?.isActive ?? false) {
+                        _debounce!.cancel();
+                      }
 
-                    _debounce = Timer(const Duration(milliseconds: 300), () {
-                      _songsBloc.add(
-                        SearchSongs(searchText: searchController.text),
-                      );
-                    });
-                  },
+                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                        _songsBloc.add(
+                          SearchSongs(searchText: searchController.text),
+                        );
+                      });
+                    },
+                  ),
                 ),
               ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
+              OutlinedButton.icon(
+                onPressed: _shuffleAll,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.divider, width: 1.w),
                   shape: RoundedRectangleBorder(
-                    side: BorderSide(color: AppColors.grey7, width: 1.w),
-                    borderRadius: BorderRadius.circular(4.r),
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
+                  padding: EdgeInsets.symmetric(horizontal: 10.w),
+                  minimumSize: Size(0, 44.h),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   backgroundColor: AppColors.transparent,
                 ),
-                child: Icon(
-                  size: 18.sp,
-                  Icons.sort_rounded,
-                  color: AppColors.grey7,
+                icon: Icon(
+                  Icons.shuffle_rounded,
+                  size: 17.sp,
+                  color: AppColors.textPrimary,
+                ),
+                label: Text(
+                  'Shuffle All',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _openSortDialog,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(minWidth: 32.w),
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.swap_vert_rounded,
+                  size: 24.sp,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -171,198 +227,37 @@ class _AllSongsPageState extends State<AllSongsPage> {
                   _songsBloc.add(FetchSongs(forceFetch: true));
                 },
                 child: ListView.builder(
-                  itemCount:
-                      isSearching
-                          ? _songsBloc.stateData.searchSongs.length
-                          : _songsBloc.stateData.songs.length,
+                  itemCount: isSearching
+                      ? _songsBloc.stateData.searchSongs.length
+                      : _songsBloc.stateData.songs.length,
                   itemBuilder: (BuildContext context, int index) {
-                    final SongModel song =
-                        isSearching
-                            ? _songsBloc.stateData.searchSongs[index]
-                            : _songsBloc.stateData.songs[index];
-                    return ListTile(
-                      leading: QueryArtworkWidget(
-                        id: song.id,
-                        type: ArtworkType.AUDIO,
-                        artworkHeight: 40.w,
-                        artworkWidth: 40.w,
-                        keepOldArtwork: true,
-                        nullArtworkWidget: Container(
-                          height: 40.w,
-                          width: 40.w,
-                          decoration: BoxDecoration(
-                            color: AppColors.iconBg,
-                            borderRadius: BorderRadius.circular(6.r),
-                          ),
-                          child: Icon(
-                            Icons.music_note_rounded,
-                            size: 18.sp,
-                            color: AppColors.iconColor,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        song.title,
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 14.sp,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      subtitle: Text(
-                        song.artist ?? 'Unknown Artist',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 12.sp,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      onTap: () {
-                        final List<SongModel> list =
-                            isSearching
-                                ? _songsBloc.stateData.searchSongs
-                                : _songsBloc.stateData.songs;
+                    final List<SongModel> list = isSearching
+                        ? _songsBloc.stateData.searchSongs
+                        : _songsBloc.stateData.songs;
+                    final SongModel song = list[index];
+                    final bool isFavorite = _songsBloc.stateData.favoriteIds
+                        .contains(song.id);
 
-                        _musicControllerBloc.add(
-                          InitAudio(
-                            song: list[index],
-                            index: index,
-                            queue: list,
-                          ),
-                        );
-                        NativeAudio.loadPlaylist(
-                          list
-                              .map(
-                                (SongModel song) => <String, String>{
-                                  'uri': song.data,
-                                  'title': song.title,
-                                  'id': song.id.toString(),
-                                },
-                              )
-                              .toList(),
-                          index,
-                        );
-
-                        Utils.openPlayerBottomSheet(
-                          context,
-                          list[index],
-                          index,
-                        );
-                      },
-                      contentPadding: EdgeInsets.only(left: 16.w),
-                      trailing: IconButton(
-                        onPressed: () {
-                          showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            useSafeArea: true,
-                            backgroundColor: AppColors.bottomSheetBg,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(16.r),
-                              ),
-                            ),
-                            builder:
-                                (BuildContext context) => Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.bottomSheetBg,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(12.r),
-                                      topRight: Radius.circular(12.r),
-                                    ),
-                                  ),
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxHeight: 0.5.sh,
-                                    ),
-                                    child: SingleChildScrollView(
-                                      child: Column(
-                                        children: <Widget>[
-                                          ListTile(
-                                            leading: QueryArtworkWidget(
-                                              id: song.id,
-                                              type: ArtworkType.AUDIO,
-                                              artworkHeight: 40.w,
-                                              artworkWidth: 40.w,
-                                              keepOldArtwork: true,
-                                              nullArtworkWidget: Container(
-                                                height: 40.w,
-                                                width: 40.w,
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.iconBg,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        6.r,
-                                                      ),
-                                                ),
-                                                child: Icon(
-                                                  Icons.music_note_rounded,
-                                                  size: 18.sp,
-                                                  color: AppColors.iconColor,
-                                                ),
-                                              ),
-                                            ),
-                                            title: Text(
-                                              song.title,
-                                              style: TextStyle(
-                                                color: AppColors.white,
-                                                fontSize: 14.sp,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                            subtitle: Text(
-                                              song.artist ?? 'Unknown Artist',
-                                              style: TextStyle(
-                                                color: AppColors.white,
-                                                fontSize: 12.sp,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                            contentPadding: EdgeInsets.only(
-                                              left: 16.w,
-                                            ),
-                                          ),
-                                          Divider(
-                                            color: AppColors.blue1,
-                                            height: 1.h,
-                                          ),
-                                          ListTile(
-                                            leading: Icon(
-                                              Icons.favorite,
-                                              size: 18.sp,
-                                              color: AppColors.grey2,
-                                            ),
-                                            title: Text(
-                                              'Add to Favourites',
-                                              style: TextStyle(
-                                                fontSize: 18.sp,
-                                                color: AppColors.grey2,
-                                              ),
-                                            ),
-                                            onTap: () {
-                                              _songsBloc.add(
-                                                AddToFavorites(song.id),
-                                              );
-                                              context.pop();
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                    return Padding(
+                      padding: EdgeInsetsGeometry.only(bottom: 8.h),
+                      child: SongTile(
+                        song: song,
+                        queue: list,
+                        index: index,
+                        onMoreTap: () {
+                          SongOptionsSheet.show(
+                            context,
+                            song: song,
+                            isFavorite: isFavorite,
+                            onToggleFavorite: () {
+                              _songsBloc.add(
+                                isFavorite
+                                    ? RemoveFromFavorites(song.id)
+                                    : AddToFavorites(song.id),
+                              );
+                            },
                           );
                         },
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          Icons.more_vert_rounded,
-                          size: 24.sp,
-                          color: AppColors.grey7,
-                        ),
                       ),
                     );
                   },

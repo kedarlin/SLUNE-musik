@@ -1,7 +1,6 @@
 #include "PlaybackController.h"
 
 #include "../common/AudioConverter.h"
-#include "../common/Logger.h"
 
 PlaybackController::PlaybackController(
     MediaCodecDecoder &decoder,
@@ -61,6 +60,7 @@ ProcessResult PlaybackController::render(
             static_cast<uint>(neededFrames));
 
     size_t consumedFifoFrames = 0;
+    bool fifoExhausted = false;
 
     while (receivedFrames < neededFrames)
     {
@@ -78,6 +78,7 @@ ProcessResult PlaybackController::render(
 
         if (pulledFrames == 0)
         {
+            fifoExhausted = true;
             break;
         }
 
@@ -109,6 +110,13 @@ ProcessResult PlaybackController::render(
         worker_.requestFill();
     }
 
+    if (fifoExhausted &&
+        stretcher_.numSamples() == 0 &&
+        decoderReachedEnd_.load(std::memory_order_acquire))
+    {
+        playbackState_.markEnded();
+    }
+
     if (receivedFrames < neededFrames)
     {
         std::fill(
@@ -134,6 +142,8 @@ void PlaybackController::clear()
     decodedBuffer_ = AudioBuffer();
 
     stretcher_.clear();
+
+    decoderReachedEnd_.store(false, std::memory_order_release);
 }
 
 ProcessResult PlaybackController::seek(int64_t positionUs)
@@ -153,6 +163,9 @@ ProcessResult PlaybackController::seek(int64_t positionUs)
     }
 
     fifo_.clear();
+
+    decoderReachedEnd_.store(false, std::memory_order_release);
+    playbackState_.clearEnded();
 
     worker_.requestFill();
 
@@ -178,11 +191,15 @@ void PlaybackController::fillFifo()
 
     std::lock_guard<std::mutex> lock(decoderMutex_);
 
-    LOGI("PlaybackWorker filling FIFO...");
-
     while (needsMoreData())
     {
         auto result = decoder_->decode(decodedBuffer_);
+
+        if (result == ProcessResult::EndOfStream)
+        {
+            decoderReachedEnd_.store(true, std::memory_order_release);
+            break;
+        }
 
         if (result != ProcessResult::Continue)
         {
@@ -197,10 +214,6 @@ void PlaybackController::fillFifo()
         if (written !=
             static_cast<size_t>(decodedBuffer_.frames))
         {
-            LOGW(
-                "FIFO full. Wrote %zu of %d frames.",
-                written,
-                decodedBuffer_.frames);
 
             break;
         }

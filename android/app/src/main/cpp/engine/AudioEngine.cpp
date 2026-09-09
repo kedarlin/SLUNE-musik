@@ -27,7 +27,6 @@ bool AudioEngine::initialize()
 {
     if (context_->initialized)
     {
-        LOGI("Engine already initialized.");
         return true;
     }
 
@@ -37,7 +36,6 @@ bool AudioEngine::initialize()
     output_.initialize(*context_);
     dsp_.initialize(*context_);
 
-    LOGI("Engine initialized.");
 
     output_.pipeline().setSource(std::make_unique<TrackSourceNode>(
         decoder_.playback()));
@@ -65,7 +63,6 @@ bool AudioEngine::loadTrack(const std::string &path)
     decoder_.playback().clear();
     decoder_.playback().start();
 
-    LOGI("PlaybackWorker launched.");
 
     return success;
 }
@@ -74,13 +71,11 @@ void AudioEngine::play()
 {
     if (!context_->initialized)
     {
-        LOGI("Cannot play. Engine not initialized.");
         return;
     }
 
     context_->playing = true;
 
-    LOGI("Playback started.");
 }
 
 oboe::Result AudioEngine::setSpeed(float speed)
@@ -97,6 +92,13 @@ oboe::Result AudioEngine::setPitch(float pitch)
     return oboe::Result::OK;
 }
 
+void AudioEngine::setVolume(float volume)
+{
+    context_->volume.store(
+        volume < 0.0f ? 0.0f : (volume > 1.0f ? 1.0f : volume),
+        std::memory_order_relaxed);
+}
+
 void AudioEngine::pause()
 {
     if (!context_->initialized)
@@ -106,7 +108,6 @@ void AudioEngine::pause()
 
     context_->playing = false;
 
-    LOGI("Playback paused.");
 }
 
 ProcessResult AudioEngine::seek(int64_t positionUs)
@@ -142,5 +143,4 @@ void AudioEngine::release()
     output_.shutdown();
     decoder_.shutdown();
 
-    LOGI("Engine released.");
 }

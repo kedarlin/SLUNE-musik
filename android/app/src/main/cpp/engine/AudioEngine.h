@@ -29,6 +29,8 @@ public:
 
     oboe::Result setPitch(float pitch);
 
+    void setVolume(float volume);
+
     ProcessResult seek(int64_t positionUs);
 
     void release();

@@ -33,7 +33,6 @@ bool ContentDataSource::open(const std::string &uri)
         length_ = static_cast<int64_t>(fileStat.st_size);
     }
 
-    LOGI("Opened content uri: %s", uri.c_str());
 
     return true;
 }
