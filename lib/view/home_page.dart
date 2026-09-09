@@ -7,6 +7,7 @@ import '../core/app_constants/app_enums.dart';
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
+import '../service/battery_optimization_helper.dart';
 import 'audio_songs_page.dart';
 import 'favourite_songs_page.dart';
 import 'playing_queue_sheet.dart';
@@ -33,6 +34,12 @@ class _HomePageState extends State<HomePage>
     super.initState();
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     _tabController = TabController(length: Tabs.values.length, vsync: this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        BatteryOptimizationHelper.promptForBackgroundReliability(context);
+      }
+    });
   }
 
   @override
