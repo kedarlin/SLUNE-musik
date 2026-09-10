@@ -59,7 +59,7 @@ class _HomePageState extends State<HomePage>
           ),
           backgroundColor: AppColors.background,
           bottom: PreferredSize(
-            preferredSize: Size.fromHeight(48.h),
+            preferredSize: Size.fromHeight(36.h),
             child: TabBar(
               controller: _tabController,
               isScrollable: true,
@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage>
               labelPadding: EdgeInsets.symmetric(horizontal: 18.w),
               labelStyle: TextStyle(
                 fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
               unselectedLabelStyle: TextStyle(
                 fontSize: 16.sp,
@@ -82,9 +82,7 @@ class _HomePageState extends State<HomePage>
               tabs: List<Widget>.generate(Tabs.values.length, (int index) {
                 final String name = Tabs.values[index].name;
                 return Tab(
-                  child: Text(
-                    '${name[0].toUpperCase()}${name.substring(1)}',
-                  ),
+                  child: Text('${name[0].toUpperCase()}${name.substring(1)}'),
                 );
               }),
             ),

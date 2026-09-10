@@ -49,9 +49,6 @@ dependencies:
   hive: ^2.2.3
   path_provider: ^2.1.5
   marquee: ^2.3.0
-  ffi: ^2.2.0
-  audio_service: ^0.18.15
-  audio_session: ^0.1.21
   disable_battery_optimization: ^1.1.1
 
 dev_dependencies:
@@ -64,6 +61,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# App launcher icon generation (run: dart run flutter_launcher_icons)
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/owl_front_view_icon_v2.png"
+  min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

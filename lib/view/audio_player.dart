@@ -109,21 +109,81 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                     onChanged: (double value) =>
                         _musicControllerBloc.add(PitchChanged(value)),
                   ),
-                  SizedBox(height: 8.h),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        _musicControllerBloc.add(SpeedChanged(1.0));
-                        _musicControllerBloc.add(PitchChanged(1.0));
-                      },
-                      child: Text(
-                        'Reset',
-                        style: TextStyle(
+                  SizedBox(height: 20.h),
+                  Text(
+                    'Lofi',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Wrap(
+                    spacing: 8.w,
+                    runSpacing: 8.h,
+                    children: LofiPreset.values.map((LofiPreset preset) {
+                      final bool selected =
+                          _musicControllerBloc.stateData.lofiPreset == preset;
+                      return ChoiceChip(
+                        label: Text(preset.label),
+                        selected: selected,
+                        onSelected: (_) =>
+                            _musicControllerBloc.add(LofiPresetChanged(preset)),
+                        selectedColor: AppColors.accent,
+                        backgroundColor: AppColors.surface,
+                        labelStyle: TextStyle(
+                          color: selected
+                              ? AppColors.background
+                              : AppColors.textPrimary,
+                          fontSize: 13.sp,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 20.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      TextButton.icon(
+                        onPressed: () {
+                          _musicControllerBloc.add(SpeedChanged(0.9));
+                          _musicControllerBloc.add(PitchChanged(0.95));
+                          _musicControllerBloc.add(
+                            LofiPresetChanged(LofiPreset.deep),
+                          );
+                        },
+                        icon: Icon(
+                          Icons.blur_on_rounded,
+                          size: 18.sp,
                           color: AppColors.accent,
-                          fontSize: 15.sp,
+                        ),
+                        label: Text(
+                          'Slowed + Lofi',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 14.sp,
+                          ),
                         ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: () {
+                          _musicControllerBloc.add(SpeedChanged(1.0));
+                          _musicControllerBloc.add(PitchChanged(1.0));
+                          _musicControllerBloc.add(
+                            LofiPresetChanged(LofiPreset.off),
+                          );
+                        },
+                        child: Text(
+                          'Reset',
+                          style: TextStyle(
+                            color: AppColors.textPrimary.withValues(
+                              alpha: 0.75,
+                            ),
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -160,6 +220,16 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         } else {
           _rotationController.stop();
           _tonearmController.reverse();
+        }
+
+        // Queue was cleared (e.g. from the Playing Queue sheet) - nothing
+        // left to show here, so close back to the song list.
+        if (_musicControllerBloc.stateData.queue.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+              Navigator.of(context).maybePop();
+            }
+          });
         }
       },
       child: BlocBuilder<MusicControllerBloc, MusicControllerState>(
@@ -199,6 +269,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                   ),
                   child: Column(
                     children: <Widget>[
+                      SizedBox(height: 12.h),
                       _buildTopBar(song),
                       Expanded(
                         child: Center(
@@ -228,8 +299,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           IconButton(
+            visualDensity: VisualDensity.compact,
             onPressed: () => context.pop(),
             icon: Icon(
               Icons.keyboard_arrow_down_rounded,
@@ -555,30 +628,39 @@ class _ScrollingTitle extends StatelessWidget {
   final TextStyle style;
   final double height;
 
+  /// Some tags carry newlines or long runs of padding spaces - collapse any
+  /// whitespace run to a single space so the scrolling title stays tidy.
+  static String _clean(String raw) =>
+      raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+
   @override
   Widget build(BuildContext context) {
+    final String display = _clean(text);
+
     return SizedBox(
       height: height,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           final TextPainter painter = TextPainter(
-            text: TextSpan(text: text, style: style),
+            text: TextSpan(text: display, style: style),
             maxLines: 1,
             textDirection: Directionality.of(context),
             textScaler: MediaQuery.textScalerOf(context),
           )..layout();
 
           if (painter.width <= constraints.maxWidth) {
-            return Center(child: Text(text, style: style, maxLines: 1));
+            return Center(child: Text(display, style: style, maxLines: 1));
           }
 
           return Marquee(
-            text: text,
+            text: display,
             style: style,
             velocity: 40.0,
             startAfter: const Duration(seconds: 2),
             startPadding: 40.w,
             pauseAfterRound: const Duration(seconds: 1),
+            fadingEdgeStartFraction: 0.12,
+            fadingEdgeEndFraction: 0.12,
           );
         },
       ),

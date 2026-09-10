@@ -21,9 +21,12 @@ class AllSongsPage extends StatefulWidget {
   State<AllSongsPage> createState() => _AllSongsPageState();
 }
 
-class _AllSongsPageState extends State<AllSongsPage> {
+class _AllSongsPageState extends State<AllSongsPage>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   late SongsBloc _songsBloc;
   bool isSearching = false;
+  bool _checkingPermission = true;
+  bool _permissionDenied = false;
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
   final FocusNode _searchFocusNode = FocusNode();
@@ -31,9 +34,9 @@ class _AllSongsPageState extends State<AllSongsPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    _songsBloc.add(FetchSongs());
-    _requestPermissionAndLoadSongs();
+    _requestPermissionThenLoadSongs();
     searchController.addListener(() {
       setState(() {
         isSearching = searchController.text.isNotEmpty;
@@ -44,18 +47,78 @@ class _AllSongsPageState extends State<AllSongsPage> {
     });
   }
 
-  Future<void> _requestPermissionAndLoadSongs() async {
-    final PermissionStatus permissionStatus = await Permission.audio.request();
-    if (!permissionStatus.isGranted) {
-      final PermissionStatus storageStatus = await Permission.storage.request();
-      if (!storageStatus.isGranted) {
-        return;
-      }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // The user may have granted the permission from the system Settings
+    // screen after tapping the button below - re-check on resume.
+    if (state == AppLifecycleState.resumed && _permissionDenied) {
+      _requestPermissionThenLoadSongs(promptIfDenied: false);
+    }
+  }
+
+  /// Waits for the media permission before dispatching [FetchSongs], so the
+  /// query never runs unauthorized (which returns an empty list). When the
+  /// permission is denied, drives the in-list "Grant permission" prompt
+  /// instead.
+  Future<void> _requestPermissionThenLoadSongs({
+    bool promptIfDenied = true,
+  }) async {
+    final bool granted = await _resolveMediaPermission(
+      allowRequest: promptIfDenied,
+    );
+
+    if (!mounted) {
+      return;
     }
 
-    if (!await Permission.notification.isGranted) {
-      await Permission.notification.request();
+    setState(() {
+      _checkingPermission = false;
+      _permissionDenied = !granted;
+    });
+
+    if (granted) {
+      // Not forced: SongsBloc no-ops if the library is already loaded, so
+      // re-entering this tab / page never re-runs the query.
+      _songsBloc.add(FetchSongs());
+
+      if (!await Permission.notification.isGranted) {
+        await Permission.notification.request();
+      }
     }
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  /// Returns whether audio/storage access is available, requesting it from
+  /// the user when [allowRequest] is set and the OS still allows a prompt.
+  Future<bool> _resolveMediaPermission({required bool allowRequest}) async {
+    Future<PermissionStatus> resolve(Permission permission) async {
+      final PermissionStatus status = await permission.status;
+      if (status.isGranted || !allowRequest || status.isPermanentlyDenied) {
+        return status;
+      }
+      return permission.request();
+    }
+
+    if ((await resolve(Permission.audio)).isGranted) {
+      return true;
+    }
+    return (await resolve(Permission.storage)).isGranted;
+  }
+
+  Future<void> _onGrantPermissionPressed() async {
+    final PermissionStatus audioStatus = await Permission.audio.status;
+    final PermissionStatus storageStatus = await Permission.storage.status;
+
+    // Once the OS marks a permission permanently denied, request() no longer
+    // shows a dialog - the app settings screen is the only way back.
+    if (audioStatus.isPermanentlyDenied || storageStatus.isPermanentlyDenied) {
+      await openAppSettings();
+      return;
+    }
+
+    await _requestPermissionThenLoadSongs();
   }
 
   Future<void> _openSortDialog() async {
@@ -91,8 +154,62 @@ class _AllSongsPageState extends State<AllSongsPage> {
     context.read<MusicControllerBloc>().add(ShuffleAll(list));
   }
 
+  Widget _buildPermissionPrompt() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Icon(
+            Icons.folder_off_rounded,
+            size: 48.sp,
+            color: AppColors.textSecondary,
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Muxic needs permission to read the audio files on your '
+            'device to show your songs.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14.sp,
+            ),
+          ),
+          SizedBox(height: 20.h),
+          FilledButton(
+            onPressed: _onGrantPermissionPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+            ),
+            child: Text(
+              'Grant permission',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _debounce?.cancel();
+    searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin
     return Column(
       children: <Widget>[
         Container(
@@ -212,7 +329,10 @@ class _AllSongsPageState extends State<AllSongsPage> {
         ),
         BlocBuilder<SongsBloc, SongsState>(
           builder: (BuildContext context, SongsState state) {
-            if (state is FetchSongsLoading) {
+            if (_permissionDenied && !isSearching) {
+              return Expanded(child: _buildPermissionPrompt());
+            }
+            if (_checkingPermission || state is FetchSongsLoading) {
               return const Center(child: CustomLoader());
             } else if ((!isSearching && _songsBloc.stateData.songs.isEmpty) ||
                 (isSearching && _songsBloc.stateData.searchSongs.isEmpty)) {
@@ -231,19 +351,32 @@ class _AllSongsPageState extends State<AllSongsPage> {
                       ? _songsBloc.stateData.searchSongs.length
                       : _songsBloc.stateData.songs.length,
                   itemBuilder: (BuildContext context, int index) {
-                    final List<SongModel> list = isSearching
+                    final List<SongModel> displayList = isSearching
                         ? _songsBloc.stateData.searchSongs
                         : _songsBloc.stateData.songs;
-                    final SongModel song = list[index];
+                    final SongModel song = displayList[index];
                     final bool isFavorite = _songsBloc.stateData.favoriteIds
                         .contains(song.id);
+
+                    // Playing a song always queues the full library so
+                    // next/previous works - even when tapped from a filtered
+                    // search result. Fall back to the visible list if the
+                    // song somehow isn't in the library list.
+                    final List<SongModel> fullList = _songsBloc.stateData.songs;
+                    final int fullIndex = fullList.indexWhere(
+                      (SongModel s) => s.id == song.id,
+                    );
+                    final List<SongModel> queue = fullIndex >= 0
+                        ? fullList
+                        : displayList;
+                    final int queueIndex = fullIndex >= 0 ? fullIndex : index;
 
                     return Padding(
                       padding: EdgeInsetsGeometry.only(bottom: 8.h),
                       child: SongTile(
                         song: song,
-                        queue: list,
-                        index: index,
+                        queue: queue,
+                        index: queueIndex,
                         onMoreTap: () {
                           SongOptionsSheet.show(
                             context,

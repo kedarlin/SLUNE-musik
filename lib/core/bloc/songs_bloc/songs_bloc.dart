@@ -98,11 +98,20 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
 
     emit(FetchSongsLoading());
 
-    final List<SongModel> fetched = await _audioQuery.querySongs(
-      sortType: SongSortType.DATE_ADDED,
-      orderType: OrderType.DESC_OR_GREATER,
-      uriType: UriType.EXTERNAL,
-    );
+    List<SongModel> fetched;
+    try {
+      fetched = await _audioQuery.querySongs(
+        sortType: SongSortType.DATE_ADDED,
+        orderType: OrderType.DESC_OR_GREATER,
+        uriType: UriType.EXTERNAL,
+      );
+    } catch (_) {
+      // Missing permission or an OS-side query failure - surface as an empty
+      // list rather than a stuck loader; the caller re-fetches once access
+      // is granted.
+      emit(stateData);
+      return;
+    }
 
     stateData.songById = <int, SongModel>{
       for (final SongModel s in fetched) s.id: s,

@@ -22,7 +22,13 @@ class PitchChanged extends MusicControllerEvent {
   final double pitch;
 }
 
-class PositionUpdated extends MusicControllerEvent {}
+/// Wraps a PlayerState pushed from PlayerClient's native EventChannel
+/// stream - position/duration/isPlaying/currentIndex are all authoritative
+/// from Media3, not computed here.
+class PlayerStateReceived extends MusicControllerEvent {
+  PlayerStateReceived(this.state);
+  final PlayerState state;
+}
 
 class SeekTo extends MusicControllerEvent {
   SeekTo(this.position);
@@ -36,6 +42,11 @@ class PreviousSong extends MusicControllerEvent {}
 class ToggleShuffle extends MusicControllerEvent {}
 
 class ChangeRepeatMode extends MusicControllerEvent {}
+
+class LofiPresetChanged extends MusicControllerEvent {
+  LofiPresetChanged(this.preset);
+  final LofiPreset preset;
+}
 
 class ShuffleAll extends MusicControllerEvent {
   ShuffleAll(this.songs);
@@ -74,3 +85,11 @@ class SetSleepTimer extends MusicControllerEvent {
   SetSleepTimer(this.duration);
   final Duration? duration;
 }
+
+/// Internal-only: dispatched by the sleep timer's own Timer callback, since
+/// bloc event handlers cannot emit() from outside an event handler.
+class _SleepTimerFired extends MusicControllerEvent {}
+
+/// Internal-only: dispatched once the song library is available, to restore
+/// the queue / current track / position the user left the app on (paused).
+class _RestoreLastSession extends MusicControllerEvent {}

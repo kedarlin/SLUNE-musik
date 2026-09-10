@@ -16,7 +16,7 @@ class SongsStateData extends SongsState {
 
   SongSortField sortField = SongSortField.date;
   bool sortAscending = false;
-  bool hideUnderOneMinute = false;
+  bool hideUnderOneMinute = true;
 }
 
 class FetchSongsLoading extends SongsState {}

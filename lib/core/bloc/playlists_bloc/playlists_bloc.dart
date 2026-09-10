@@ -22,10 +22,17 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
   Box<Map<dynamic, dynamic>> get _box =>
       Hive.box<Map<dynamic, dynamic>>('playlists');
 
+  bool _loadedOnce = false;
+
   Future<void> _loadPlaylists(
     LoadPlaylists event,
     Emitter<PlaylistsState> emit,
   ) async {
+    if (_loadedOnce && !event.force) {
+      return;
+    }
+    _loadedOnce = true;
+
     stateData.playlists = _box.values.map(Playlist.fromMap).toList()
       ..sort((Playlist a, Playlist b) => a.createdAt.compareTo(b.createdAt));
 
@@ -47,7 +54,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
 
     await _box.put(id, playlist.toMap());
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 
   Future<void> _renamePlaylist(
@@ -64,7 +71,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
 
     await _box.put(event.playlistId, playlist.toMap());
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 
   Future<void> _deletePlaylist(
@@ -73,7 +80,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
   ) async {
     await _box.delete(event.playlistId);
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 
   Future<void> _addSongToPlaylist(
@@ -93,7 +100,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
       await _box.put(event.playlistId, playlist.toMap());
     }
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 
   Future<void> _removeSongFromPlaylist(
@@ -111,7 +118,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
 
     await _box.put(event.playlistId, playlist.toMap());
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 
   Future<void> _reorderSongsInPlaylist(
@@ -135,6 +142,6 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
 
     await _box.put(event.playlistId, playlist.toMap());
 
-    add(LoadPlaylists());
+    add(LoadPlaylists(force: true));
   }
 }

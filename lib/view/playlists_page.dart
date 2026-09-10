@@ -20,7 +20,8 @@ class PlaylistsPage extends StatefulWidget {
   State<PlaylistsPage> createState() => _PlaylistsPageState();
 }
 
-class _PlaylistsPageState extends State<PlaylistsPage> {
+class _PlaylistsPageState extends State<PlaylistsPage>
+    with AutomaticKeepAliveClientMixin {
   late PlaylistsBloc _playlistsBloc;
   late SongsBloc _songsBloc;
 
@@ -28,10 +29,14 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
   String _query = '';
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _playlistsBloc = BlocProvider.of<PlaylistsBloc>(context);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
+    // Not forced: no-ops if playlists are already loaded.
     _playlistsBloc.add(LoadPlaylists());
 
     _searchController.addListener(() {
@@ -141,6 +146,7 @@ class _PlaylistsPageState extends State<PlaylistsPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin
     return Column(
       children: <Widget>[
         Padding(

@@ -24,19 +24,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        externalNativeBuild {
-            cmake {
-                cppFlags.add("-std=c++20")
-            }
-        }
     }
-
-    externalNativeBuild {
-    cmake {
-        path = file("src/main/cpp/CMakeLists.txt")
-    }
-}
 
     buildTypes {
         release {
@@ -49,6 +37,13 @@ flutter {
     source = "../.."
 }
 
-// media3/ExoPlayer was dropped along with MusicPlayerService - playback is
-// handled by the native Oboe engine, and the media session by audio_service.
-dependencies {}
+// Playback engine: Media3 ExoPlayer, replacing the native Oboe/C++ engine and
+// the audio_service Dart package - the media session is now our own
+// PlaybackService (see android/app/src/main/kotlin/.../playback).
+dependencies {
+    implementation("androidx.media3:media3-exoplayer:1.11.0")
+    implementation("androidx.media3:media3-session:1.11.0")
+    implementation("androidx.media3:media3-common:1.11.0")
+    // For DataSourceBitmapLoader (notification artwork fallback).
+    implementation("androidx.media3:media3-datasource:1.11.0")
+}

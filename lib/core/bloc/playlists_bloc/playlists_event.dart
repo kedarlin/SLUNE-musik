@@ -2,7 +2,14 @@ part of 'playlists_bloc.dart';
 
 abstract class PlaylistsEvent {}
 
-class LoadPlaylists extends PlaylistsEvent {}
+class LoadPlaylists extends PlaylistsEvent {
+  LoadPlaylists({this.force = false});
+
+  /// When false, a load is skipped if playlists are already in memory - so
+  /// re-entering the Playlists tab doesn't re-read Hive. CRUD handlers pass
+  /// true to refresh after a change.
+  final bool force;
+}
 
 class CreatePlaylist extends PlaylistsEvent {
   CreatePlaylist(this.name, {this.initialSongId});

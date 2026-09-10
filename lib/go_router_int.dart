@@ -17,9 +17,6 @@ class GoRouterInit {
       RouteObserver<ModalRoute<dynamic>>();
   static Object? initialExtra;
 
-  static late final SongsBloc songsBloc;
-  static late final MusicControllerBloc musicControllerBloc;
-
   static GoRouter router = GoRouter(
     debugLogDiagnostics: true,
     observers: <NavigatorObserver>[GoRouterInit.routeObserver],
@@ -30,9 +27,13 @@ class GoRouterInit {
         builder: (BuildContext context, GoRouterState state, Widget child) {
           return MultiBlocProvider(
             providers: <SingleChildWidget>[
-              BlocProvider<SongsBloc>.value(value: songsBloc),
-              BlocProvider<MusicControllerBloc>.value(
-                value: musicControllerBloc,
+              BlocProvider<SongsBloc>(
+                create: (BuildContext context) => SongsBloc(),
+              ),
+              BlocProvider<MusicControllerBloc>(
+                create: (BuildContext context) => MusicControllerBloc(
+                  BlocProvider.of<SongsBloc>(context),
+                ),
               ),
               BlocProvider<PlaylistsBloc>(
                 create: (BuildContext context) => PlaylistsBloc(),

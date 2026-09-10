@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../core/bloc/songs_bloc/songs_bloc.dart';
 import '../core/common_widgets.dart/loader_widget.dart';
@@ -15,29 +14,26 @@ class FavouriteSongsPage extends StatefulWidget {
   State<FavouriteSongsPage> createState() => _FavouriteSongsPageState();
 }
 
-class _FavouriteSongsPageState extends State<FavouriteSongsPage> {
+class _FavouriteSongsPageState extends State<FavouriteSongsPage>
+    with AutomaticKeepAliveClientMixin {
   late SongsBloc _songsBloc;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     _songsBloc = BlocProvider.of<SongsBloc>(context);
+    // Favourites are derived from the library - make sure it is loaded
+    // (no-ops if it already is), then resolve the favourite ids.
+    _songsBloc.add(FetchSongs());
     _songsBloc.add(GetAllFavorites());
-    _requestPermissionAndLoadSongs();
-  }
-
-  Future<void> _requestPermissionAndLoadSongs() async {
-    final PermissionStatus permissionStatus = await Permission.audio.request();
-    if (!permissionStatus.isGranted) {
-      final PermissionStatus storageStatus = await Permission.storage.request();
-      if (!storageStatus.isGranted) {
-        return;
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin
     return Column(
       children: <Widget>[
         BlocBuilder<SongsBloc, SongsState>(

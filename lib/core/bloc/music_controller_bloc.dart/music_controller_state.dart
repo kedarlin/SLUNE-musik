@@ -13,6 +13,7 @@ class MusicControllerStateData extends MusicControllerState {
 
   bool isShuffle = false;
   RepeatMode repeatMode = RepeatMode.off;
+  LofiPreset lofiPreset = LofiPreset.off;
 
   SongModel? song;
   int index = 0;

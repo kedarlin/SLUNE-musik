@@ -93,11 +93,11 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(_icons[field], size: 26.sp, color: color),
+              Icon(_icons[field], size: 24.sp, color: color),
               SizedBox(height: 8.h),
               Text(
                 _labels[field]!,
-                style: TextStyle(color: color, fontSize: 14.sp),
+                style: TextStyle(color: color, fontSize: 12.sp),
               ),
             ],
           ),
@@ -154,9 +154,7 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
 
     return Dialog(
       backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
         child: Column(
@@ -172,9 +170,7 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
               ),
             ),
             SizedBox(height: 20.h),
-            Row(
-              children: SongSortField.values.map(_buildFieldOption).toList(),
-            ),
+            Row(children: SongSortField.values.map(_buildFieldOption).toList()),
             SizedBox(height: 20.h),
             Row(
               children: <Widget>[
@@ -202,11 +198,12 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
                     '1 min above',
                     style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 16.sp,
+                      fontSize: 14.sp,
                     ),
                   ),
                 ),
                 Switch(
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   value: _hideUnderOneMinute,
                   activeThumbColor: AppColors.white,
                   activeTrackColor: AppColors.accent,
