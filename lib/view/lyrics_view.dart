@@ -96,6 +96,30 @@ class _LyricsViewState extends State<LyricsView> {
     });
   }
 
+  /// Soft-fades the top and bottom edges of [child] to transparent, instead
+  /// of hard-clipping a line that's scrolled halfway out of view.
+  /// `BlendMode.dstIn` uses the gradient's alpha to mask the content under
+  /// it, so the fade tracks the panel's own bounds regardless of its size.
+  Widget _fadeEdges({required Widget child}) {
+    return ShaderMask(
+      shaderCallback: (Rect bounds) {
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: <double>[0.0, 0.08, 0.92, 1.0],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
+  }
+
   Future<void> _openEditor(Lyrics? initial) async {
     final SongModel? song = widget.lyricsBloc.stateData.song;
     if (song == null) {
@@ -311,7 +335,7 @@ class _LyricsViewState extends State<LyricsView> {
             ],
           ),
         ),
-        Expanded(child: _buildLineList(data, interactive: false)),
+        Expanded(child: _fadeEdges(child: _buildLineList(data, interactive: false))),
       ],
     );
   }
@@ -324,24 +348,26 @@ class _LyricsViewState extends State<LyricsView> {
         if (data.isDraft) _buildDraftBanner(data),
         _buildToolbar(data),
         Expanded(
-          child: lyrics.synced
-              ? _buildLineList(data, interactive: true)
-              : SingleChildScrollView(
-                  controller: _scrollController,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 24.w,
-                    vertical: 8.h,
-                  ),
-                  child: Text(
-                    lyrics.plainText ?? '',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15.sp,
-                      height: 1.6,
+          child: _fadeEdges(
+            child: lyrics.synced
+                ? _buildLineList(data, interactive: true)
+                : SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24.w,
+                      vertical: 8.h,
+                    ),
+                    child: Text(
+                      lyrics.plainText ?? '',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 15.sp,
+                        height: 1.6,
+                      ),
                     ),
                   ),
-                ),
+          ),
         ),
       ],
     );

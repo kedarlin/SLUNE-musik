@@ -49,6 +49,9 @@ class MusicControllerBloc
     on<RemoveFromQueue>(_onRemoveFromQueue);
     on<ClearQueue>(_onClearQueue);
     on<JumpToQueueIndex>(_onJumpToQueueIndex);
+    on<SetAbLoopPointA>(_onSetAbLoopPointA);
+    on<SetAbLoopPointB>(_onSetAbLoopPointB);
+    on<ClearAbLoop>(_onClearAbLoop);
     on<SetSleepTimer>(_onSetSleepTimer);
     on<_SleepTimerFired>(_onSleepTimerFired);
     on<_RestoreLastSession>(_onRestoreLastSession);
@@ -287,6 +290,18 @@ class MusicControllerBloc
       if (stateData.index != previousIndex) {
         songsBloc.add(RecordRecentlyPlayed(stateData.song!.id));
       }
+    }
+
+    // A-B loop points belong to whatever song they were set on - a track
+    // change (including auto-advance) drops them rather than looping a
+    // section of the wrong song.
+    if (stateData.index != previousIndex) {
+      stateData.abLoopAMs = null;
+      stateData.abLoopBMs = null;
+    } else if (stateData.hasAbLoop &&
+        stateData.position >= stateData.abLoopBMs!) {
+      await _player.seekTo(Duration(milliseconds: stateData.abLoopAMs!));
+      stateData.position = stateData.abLoopAMs!;
     }
 
     // Persist on a track change or every ~5s of playback, not every tick.
@@ -645,6 +660,8 @@ class MusicControllerBloc
     stateData.isPlaying = false;
     stateData.position = 0;
     stateData.duration = 0;
+    stateData.abLoopAMs = null;
+    stateData.abLoopBMs = null;
 
     _persistSession();
     emit(MusicQueueChanged());
@@ -660,6 +677,48 @@ class MusicControllerBloc
     }
 
     await _player.jumpTo(event.index);
+  }
+
+  // --- A-B repeat --------------------------------------------------------
+  //
+  // Enforced client-side against the position already ticking in from
+  // Media3 every ~200ms (see _onPlayerStateReceived) rather than a native
+  // ExoPlayer PlayerMessage - that granularity is well under what's audible
+  // for a practice-loop feature, and it needs no new native surface at all.
+
+  Future<void> _onSetAbLoopPointA(
+    SetAbLoopPointA event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.abLoopAMs = stateData.position;
+    // A new A past the existing B would loop backward - drop B instead,
+    // so the user just re-sets it rather than the loop doing nothing.
+    if (stateData.abLoopBMs != null &&
+        stateData.abLoopBMs! <= stateData.abLoopAMs!) {
+      stateData.abLoopBMs = null;
+    }
+    emit(stateData);
+  }
+
+  Future<void> _onSetAbLoopPointB(
+    SetAbLoopPointB event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.abLoopBMs = stateData.position;
+    if (stateData.abLoopAMs != null &&
+        stateData.abLoopAMs! >= stateData.abLoopBMs!) {
+      stateData.abLoopAMs = null;
+    }
+    emit(stateData);
+  }
+
+  Future<void> _onClearAbLoop(
+    ClearAbLoop event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.abLoopAMs = null;
+    stateData.abLoopBMs = null;
+    emit(stateData);
   }
 
   Future<void> _onSetSleepTimer(

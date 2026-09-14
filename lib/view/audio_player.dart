@@ -35,6 +35,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   late AnimationController _rotationController;
   late AnimationController _tonearmController;
   bool _showLyrics = false;
+  bool _showAbLoop = false;
 
   @override
   void initState() {
@@ -269,6 +270,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                       _buildUtilityRow(song, isFavorite),
                       SizedBox(height: 16.h),
                       _buildProgress(),
+                      if (_showAbLoop) ...<Widget>[
+                        SizedBox(height: 4.h),
+                        _buildAbLoopRow(),
+                      ],
                       SizedBox(height: 12.h),
                       _buildControls(),
                       SizedBox(height: 40.h),
@@ -421,10 +426,15 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
               color: AppColors.textPrimary,
             ),
           ),
-          Icon(
-            Icons.compare_arrows_rounded,
-            size: 26.sp,
-            color: AppColors.disabled,
+          IconButton(
+            onPressed: () => setState(() => _showAbLoop = !_showAbLoop),
+            icon: Icon(
+              Icons.compare_arrows_rounded,
+              size: 26.sp,
+              color: _musicControllerBloc.stateData.hasAbLoop
+                  ? AppColors.accent
+                  : AppColors.textPrimary,
+            ),
           ),
           IconButton(
             onPressed: _showSpeedPitchSheet,
@@ -513,6 +523,95 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Tap "A" / "B" to mark the current playback position as that loop point;
+  /// once both are set, playback repeats between them (enforced in
+  /// MusicControllerBloc against the position it already streams in). "X"
+  /// clears both without hiding this row, so the user can re-mark points
+  /// without reopening it via the toolbar icon.
+  Widget _buildAbLoopRow() {
+    final int? a = _musicControllerBloc.stateData.abLoopAMs;
+    final int? b = _musicControllerBloc.stateData.abLoopBMs;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          _buildAbPoint(
+            label: 'A',
+            ms: a,
+            onTap: () => _musicControllerBloc.add(SetAbLoopPointA()),
+          ),
+          SizedBox(width: 24.w),
+          _buildAbPoint(
+            label: 'B',
+            ms: b,
+            onTap: () => _musicControllerBloc.add(SetAbLoopPointB()),
+          ),
+          SizedBox(width: 20.w),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: (a == null && b == null)
+                ? null
+                : () => _musicControllerBloc.add(ClearAbLoop()),
+            icon: Icon(
+              Icons.close_rounded,
+              size: 18.sp,
+              color: (a == null && b == null)
+                  ? AppColors.disabled
+                  : AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbPoint({
+    required String label,
+    required int? ms,
+    required VoidCallback onTap,
+  }) {
+    final Color color = ms != null ? AppColors.accent : AppColors.textPrimary;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 24.w,
+              height: 24.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color, width: 1.5.w),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (ms != null) ...<Widget>[
+              SizedBox(width: 6.w),
+              Text(
+                _formatTime(ms),
+                style: TextStyle(color: color, fontSize: 13.sp),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

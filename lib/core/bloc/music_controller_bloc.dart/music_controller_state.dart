@@ -28,6 +28,14 @@ class MusicControllerStateData extends MusicControllerState {
   List<SongModel> queue = <SongModel>[];
 
   DateTime? sleepTimerEndsAt;
+
+  // --- A-B repeat ---
+  // Ephemeral (never persisted, never survives a track change) - a practice
+  // tool for looping a section of the *current* song, not a saved setting.
+  int? abLoopAMs;
+  int? abLoopBMs;
+
+  bool get hasAbLoop => abLoopAMs != null && abLoopBMs != null;
 }
 
 class MusicLoading extends MusicControllerState {}

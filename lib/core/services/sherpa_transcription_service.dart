@@ -52,8 +52,16 @@ class SherpaTranscriptionService implements TranscriptionService {
       isolate = null;
       receivePort?.close();
       receivePort = null;
-      await _bridge.stopForegroundService();
       final String? wavPath = tempWavPath;
+      if (wavPath != null) {
+        // Interrupts the native MediaCodec/MediaExtractor loop if a decode
+        // for this job is still running - otherwise switching songs mid
+        // "Decoding audio…" let that decode burn CPU/battery to completion
+        // for a result nobody was going to use. Harmless no-op if decoding
+        // already finished (or never started).
+        await _bridge.cancelDecode(wavPath);
+      }
+      await _bridge.stopForegroundService();
       if (wavPath != null) {
         try {
           final File file = File(wavPath);
@@ -154,7 +162,11 @@ class SherpaTranscriptionService implements TranscriptionService {
           }
         }
       } catch (error) {
-        if (!controller.isClosed) {
+        // A deliberate cancellation (song switched, user cancelled) can
+        // surface here as the native decode throwing DECODE_CANCELLED, or as
+        // the isolate's port closing mid-read - neither is a real failure,
+        // so don't report it as one.
+        if (!cancelled && !controller.isClosed) {
           controller.addError(TranscriptionException(error.toString()));
           await controller.close();
         }

@@ -26,6 +26,21 @@ class NativeLyricsBridge {
     return ms ?? 0;
   }
 
+  /// Interrupts an in-flight [decodeToWav] call for the same [outputPath].
+  /// Safe to call even if that decode already finished or was never
+  /// started - the native side just no-ops.
+  Future<void> cancelDecode(String outputPath) async {
+    try {
+      await _channel.invokeMethod('cancelDecode', <String, dynamic>{
+        'outputPath': outputPath,
+      });
+    } on PlatformException {
+      // ignore
+    } on MissingPluginException {
+      // ignore
+    }
+  }
+
   Future<void> startForegroundService(String title) async {
     try {
       await _channel.invokeMethod('startForegroundService', <String, dynamic>{

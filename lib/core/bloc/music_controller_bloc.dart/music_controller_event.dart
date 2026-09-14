@@ -115,6 +115,14 @@ class JumpToQueueIndex extends MusicControllerEvent {
   final int index;
 }
 
+/// Marks the current playback position as the A-B loop's start point.
+class SetAbLoopPointA extends MusicControllerEvent {}
+
+/// Marks the current playback position as the A-B loop's end point.
+class SetAbLoopPointB extends MusicControllerEvent {}
+
+class ClearAbLoop extends MusicControllerEvent {}
+
 class SetSleepTimer extends MusicControllerEvent {
   SetSleepTimer(this.duration);
   final Duration? duration;

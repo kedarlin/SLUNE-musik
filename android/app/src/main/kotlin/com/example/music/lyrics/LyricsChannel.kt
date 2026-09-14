@@ -7,6 +7,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ConcurrentHashMap
 
 private const val METHOD_CHANNEL = "muxic/lyrics"
 
@@ -25,6 +26,16 @@ class LyricsChannel(private val context: Context) {
 
     private val decoder = LyricsAudioDecoder()
     private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Keyed by outputPath, which the Dart side already generates uniquely
+    // per generation job - lets an in-flight decode be cancelled by exactly
+    // the job that owns it, without disturbing a concurrently running one
+    // (interactive generation and generate-ahead can each have a decode in
+    // flight at once). ConcurrentHashMap because entries are written/read
+    // from the main thread (decodeToWav/cancelDecode handlers) and removed
+    // from the background decode Thread (its `finally`) - a plain HashMap
+    // touched from two threads like that is a real, if rare, crash risk.
+    private val activeDecodes = ConcurrentHashMap<String, DecodeCancellationToken>()
 
     // Reference count, not a plain flag: an interactive generation for the
     // song on screen and a background generate-ahead job for the next song
@@ -45,18 +56,33 @@ class LyricsChannel(private val context: Context) {
                         result.error("BAD_ARGS", "sourcePath and outputPath are required", null)
                         return@setMethodCallHandler
                     }
+                    val token = DecodeCancellationToken()
+                    activeDecodes[outputPath] = token
                     // MediaCodec decode of a multi-minute file must not run on
                     // the platform channel's main-thread handler.
                     Thread {
                         try {
-                            val durationMs = decoder.decodeToWav(sourcePath, outputPath, enhanceVocals)
+                            val durationMs =
+                                decoder.decodeToWav(sourcePath, outputPath, enhanceVocals, token)
                             mainHandler.post { result.success(durationMs) }
+                        } catch (cancelled: DecodeCancelledException) {
+                            mainHandler.post { result.error("DECODE_CANCELLED", null, null) }
                         } catch (error: Exception) {
                             mainHandler.post {
                                 result.error("DECODE_FAILED", error.message, null)
                             }
+                        } finally {
+                            activeDecodes.remove(outputPath)
                         }
                     }.start()
+                }
+                "cancelDecode" -> {
+                    val outputPath = call.argument<String>("outputPath")
+                    val token = if (outputPath != null) activeDecodes[outputPath] else null
+                    if (token != null) {
+                        token.cancelled = true
+                    }
+                    result.success(null)
                 }
                 "startForegroundService" -> {
                     val title = call.argument<String>("title") ?: "Generating lyrics…"

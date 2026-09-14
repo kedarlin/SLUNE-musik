@@ -8,7 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/loader_widget.dart';
+import '../core/common_widgets.dart/song_list_skeleton.dart';
 import '../core/common_widgets.dart/song_options_sheet.dart';
 import '../core/common_widgets.dart/song_tile.dart';
 import '../core/common_widgets.dart/sort_options_dialog.dart';
@@ -333,7 +333,7 @@ class _AllSongsPageState extends State<AllSongsPage>
               return Expanded(child: _buildPermissionPrompt());
             }
             if (_checkingPermission || state is FetchSongsLoading) {
-              return const Center(child: CustomLoader());
+              return const Expanded(child: SongListSkeleton());
             } else if ((!isSearching && _songsBloc.stateData.songs.isEmpty) ||
                 (isSearching && _songsBloc.stateData.searchSongs.isEmpty)) {
               return const Center(child: Text('No songs found'));

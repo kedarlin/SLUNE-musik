@@ -26,6 +26,21 @@ private const val VOCAL_HIGH_PASS_HZ = 150.0
 private const val VOCAL_LOW_PASS_HZ = 5000.0
 
 /**
+ * Cooperative cancellation for a single [LyricsAudioDecoder.decodeToWav]
+ * call. A plain flag rather than e.g. Thread.interrupt() so one decode job
+ * can be stopped without any risk of affecting a different, concurrently
+ * running one (interactive generation and generate-ahead can each have a
+ * decode in flight against the same shared [LyricsAudioDecoder] instance).
+ */
+class DecodeCancellationToken {
+    @Volatile
+    var cancelled: Boolean = false
+}
+
+/** Thrown to unwind [LyricsAudioDecoder.decodeToWav] when its token is cancelled. */
+class DecodeCancelledException : Exception("decode cancelled")
+
+/**
  * Decodes an arbitrary audio file (whatever MediaCodec/MediaExtractor support
  * on-device - mp3/aac/flac/opus/vorbis/wav) to a 16 kHz mono 16-bit PCM WAV
  * file, the input format the lyrics ASR pipeline (sherpa-onnx Whisper) wants.
@@ -41,11 +56,17 @@ class LyricsAudioDecoder {
      * When [enhanceVocals] is set, a vocal-frequency bandpass is applied to
      * the downmixed mono signal before resampling - a cheap SNR nudge for the
      * ASR pass, not a substitute for real vocal separation.
+     *
+     * [cancellationToken], when given, is checked once per decode loop
+     * iteration (every ~10-20ms) so switching songs mid-decode stops the
+     * MediaCodec/MediaExtractor work promptly instead of burning CPU/battery
+     * decoding a file nobody wants transcribed any more.
      */
     fun decodeToWav(
         sourcePath: String,
         outputPath: String,
         enhanceVocals: Boolean = true,
+        cancellationToken: DecodeCancellationToken? = null,
     ): Long {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
@@ -86,6 +107,9 @@ class LyricsAudioDecoder {
             var sawOutputEos = false
 
             while (!sawOutputEos) {
+                if (cancellationToken?.cancelled == true) {
+                    throw DecodeCancelledException()
+                }
                 if (!sawInputEos) {
                     val inIndex = codec.dequeueInputBuffer(DEQUEUE_TIMEOUT_US)
                     if (inIndex >= 0) {
