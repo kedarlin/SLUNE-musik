@@ -121,7 +121,7 @@ class _HomePageState extends State<HomePage>
                     );
                   },
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(8.w, 0, 8.w, 8.h),
+                    padding: EdgeInsets.fromLTRB(12.w, 4, 8.w, 16.h),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(32.r),
                       onTap: () {
@@ -131,37 +131,43 @@ class _HomePageState extends State<HomePage>
                           _musicControllerBloc.stateData.index,
                         );
                       },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(32.r),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Padding(
-                            padding: EdgeInsets.all(6.w),
-                            child: Row(
+                      child: Container(
+                        height: 48.h,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.only(
+                            topRight: Radius.circular(32.r),
+                            bottomRight: Radius.circular(32.r),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Row(
                               children: <Widget>[
-                                QueryArtworkWidget(
-                                  id: song.id,
-                                  keepOldArtwork: true,
-                                  type: ArtworkType.AUDIO,
-                                  artworkHeight: 46.w,
-                                  artworkWidth: 46.w,
-                                  artworkBorder: BorderRadius.circular(8.r),
-                                  nullArtworkWidget: Container(
-                                    height: 46.w,
-                                    width: 46.w,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.iconBg,
-                                      borderRadius: BorderRadius.circular(8.r),
-                                    ),
-                                    child: Icon(
-                                      Icons.music_note_rounded,
-                                      size: 20.sp,
-                                      color: AppColors.iconColor,
+                                Transform.scale(
+                                  scale: 1.1,
+                                  child: QueryArtworkWidget(
+                                    id: song.id,
+                                    keepOldArtwork: true,
+                                    type: ArtworkType.AUDIO,
+                                    artworkHeight: 44.w,
+                                    artworkWidth: 44.w,
+                                    artworkBorder: BorderRadius.circular(4.r),
+                                    nullArtworkWidget: Container(
+                                      height: 44.w,
+                                      width: 44.w,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.iconBg,
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.music_note_rounded,
+                                        size: 20.sp,
+                                        color: AppColors.iconColor,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -171,7 +177,7 @@ class _HomePageState extends State<HomePage>
                                     song.title,
                                     style: TextStyle(
                                       color: AppColors.textPrimary,
-                                      fontSize: 14.sp,
+                                      fontSize: 13.sp,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
@@ -202,19 +208,18 @@ class _HomePageState extends State<HomePage>
                                 ),
                               ],
                             ),
-                          ),
-                          LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 2.h,
-                            backgroundColor: AppColors.divider,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              AppColors.accent,
+                            LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 2.h,
+                              backgroundColor: AppColors.divider,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.accent,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                   ),
                 );
               },

@@ -6,6 +6,11 @@ import 'app_colors.dart';
 final ThemeData themeData = ThemeData(
   brightness: Brightness.dark,
   scaffoldBackgroundColor: AppColors.background,
+  textSelectionTheme: const TextSelectionThemeData(
+    cursorColor: AppColors.accent,
+    selectionColor: AppColors.textSecondary,
+    selectionHandleColor: AppColors.textSecondary,
+  ),
   colorScheme: ColorScheme.fromSeed(
     brightness: Brightness.dark,
     seedColor: AppColors.accent,
