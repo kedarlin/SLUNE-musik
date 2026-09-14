@@ -43,9 +43,43 @@ class ToggleShuffle extends MusicControllerEvent {}
 
 class ChangeRepeatMode extends MusicControllerEvent {}
 
-class LofiPresetChanged extends MusicControllerEvent {
-  LofiPresetChanged(this.preset);
-  final LofiPreset preset;
+class EqEnabledChanged extends MusicControllerEvent {
+  EqEnabledChanged(this.enabled);
+  final bool enabled;
+}
+
+class EqPresetSelected extends MusicControllerEvent {
+  EqPresetSelected(this.preset, this.bandLevelsMb);
+  final int preset; // -1 = custom
+  final List<int> bandLevelsMb; // curve the native EQ resolved for this preset
+}
+
+class EqBandChanged extends MusicControllerEvent {
+  EqBandChanged(this.band, this.levelMb);
+  final int band;
+  final int levelMb;
+}
+
+class BassBoostChanged extends MusicControllerEvent {
+  BassBoostChanged(this.strength); // 0..1000
+  final int strength;
+}
+
+class VirtualizerChanged extends MusicControllerEvent {
+  VirtualizerChanged(this.strength); // 0..1000
+  final int strength;
+}
+
+class ReverbPresetChanged extends MusicControllerEvent {
+  ReverbPresetChanged(this.preset);
+  final ReverbPreset preset;
+}
+
+/// Dispatched by the equalizer sheet once it has queried device caps, so the
+/// bloc can size `eqBands` and re-push any persisted custom curve.
+class EqBandsInitialized extends MusicControllerEvent {
+  EqBandsInitialized(this.bandCount);
+  final int bandCount;
 }
 
 class ShuffleAll extends MusicControllerEvent {

@@ -1,3 +1,7 @@
+# Offline lyrics engine model files - large binaries, staged here locally for
+# `adb push` to the device, never committed. See docs/LYRICS_PLAN.md.
+/models/
+
 # Miscellaneous
 *.class
 *.log

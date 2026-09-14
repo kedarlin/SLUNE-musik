@@ -151,8 +151,110 @@ class PlayerClient {
 
   Future<void> clearQueue() => _invoke('clearQueue');
 
-  /// [level] is 0..1 - handed straight to the native LofiAudioProcessor's
-  /// wet/dry mix (0 = off, 1 = full effect).
-  Future<void> setLofi(double level) =>
-      _invoke('setLofi', <String, dynamic>{'level': level});
+  // --- audiofx panel ----------------------------------------------------
+  //
+  // These are intentionally primitive: the native AudioEffectsController
+  // owns how each is realised (android.media.audiofx today, could change),
+  // so this contract never has to change.
+
+  Future<void> setEqEnabled(bool enabled) =>
+      _invoke('setEqEnabled', <String, dynamic>{'enabled': enabled});
+
+  /// Applies a device Equalizer preset (or -1 for custom) and returns the
+  /// resulting per-band curve in millibels, so the UI sliders can follow it.
+  /// Empty list if the query fails.
+  Future<List<int>> setEqPreset(int preset) async {
+    try {
+      final dynamic raw = await _method.invokeMethod<dynamic>(
+        'setEqPreset',
+        <String, dynamic>{'preset': preset},
+      );
+      if (raw is List) {
+        return raw.map<int>((dynamic e) => e as int).toList();
+      }
+      return <int>[];
+    } on PlatformException {
+      return <int>[];
+    } on MissingPluginException {
+      return <int>[];
+    }
+  }
+
+  /// [levelMb] is millibels (e.g. -1500..1500). Switches the EQ to "custom".
+  Future<void> setEqBand(int band, int levelMb) =>
+      _invoke('setEqBand', <String, dynamic>{'band': band, 'level': levelMb});
+
+  /// [strength] is 0..1000.
+  Future<void> setBassBoost(int strength) =>
+      _invoke('setBassBoost', <String, dynamic>{'strength': strength});
+
+  /// [strength] is 0..1000.
+  Future<void> setVirtualizer(int strength) =>
+      _invoke('setVirtualizer', <String, dynamic>{'strength': strength});
+
+  /// [preset] maps 1:1 onto PresetReverb PRESET_* constants (0..6).
+  Future<void> setReverb(int preset) =>
+      _invoke('setReverb', <String, dynamic>{'preset': preset});
+
+  /// What the current device's audio effect stack actually supports. Returns
+  /// null if the query fails or the player isn't connected yet.
+  Future<AudioFxCaps?> getFxCaps() async {
+    try {
+      final dynamic raw = await _method.invokeMethod<dynamic>('getFxCaps');
+      if (raw is! Map) {
+        return null;
+      }
+      return AudioFxCaps.fromMap(Map<dynamic, dynamic>.from(raw));
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+  }
+}
+
+/// Device audio-effect capabilities, queried from the native Equalizer /
+/// BassBoost / Virtualizer / PresetReverb once playback is live.
+class AudioFxCaps {
+  const AudioFxCaps({
+    required this.eqAvailable,
+    required this.bandCount,
+    required this.centerFreqsHz,
+    required this.minLevelMb,
+    required this.maxLevelMb,
+    required this.presetNames,
+    required this.bassBoostAvailable,
+    required this.virtualizerAvailable,
+    required this.reverbAvailable,
+  });
+
+  factory AudioFxCaps.fromMap(Map<dynamic, dynamic> map) {
+    final List<int> freqsMilliHz =
+        (map['centerFreqsMilliHz'] as List<dynamic>? ?? <dynamic>[])
+            .map<int>((dynamic e) => e as int)
+            .toList();
+    return AudioFxCaps(
+      eqAvailable: map['eqAvailable'] as bool? ?? false,
+      bandCount: map['bandCount'] as int? ?? 0,
+      centerFreqsHz: freqsMilliHz.map((int mHz) => mHz ~/ 1000).toList(),
+      minLevelMb: map['minLevelMb'] as int? ?? -1500,
+      maxLevelMb: map['maxLevelMb'] as int? ?? 1500,
+      presetNames: (map['presetNames'] as List<dynamic>? ?? <dynamic>[])
+          .map((dynamic e) => e as String)
+          .toList(),
+      bassBoostAvailable: map['bassBoostAvailable'] as bool? ?? false,
+      virtualizerAvailable: map['virtualizerAvailable'] as bool? ?? false,
+      reverbAvailable: map['reverbAvailable'] as bool? ?? false,
+    );
+  }
+
+  final bool eqAvailable;
+  final int bandCount;
+  final List<int> centerFreqsHz;
+  final int minLevelMb;
+  final int maxLevelMb;
+  final List<String> presetNames;
+  final bool bassBoostAvailable;
+  final bool virtualizerAvailable;
+  final bool reverbAvailable;
 }

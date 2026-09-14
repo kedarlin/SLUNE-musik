@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nested/nested.dart';
 
+import 'core/bloc/lyrics_bloc/lyrics_bloc.dart';
 import 'core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import 'core/bloc/playlists_bloc/playlists_bloc.dart';
 import 'core/bloc/songs_bloc/songs_bloc.dart';
 import 'core/routes/app_routes.dart';
+import 'core/services/sherpa_transcription_service.dart';
 import 'view/home_page.dart';
 import 'view/playlist_detail_page.dart';
 
@@ -33,6 +35,13 @@ class GoRouterInit {
               BlocProvider<MusicControllerBloc>(
                 create: (BuildContext context) => MusicControllerBloc(
                   BlocProvider.of<SongsBloc>(context),
+                ),
+              ),
+              BlocProvider<LyricsBloc>(
+                lazy: false,
+                create: (BuildContext context) => LyricsBloc(
+                  BlocProvider.of<MusicControllerBloc>(context),
+                  transcriber: SherpaTranscriptionService(),
                 ),
               ),
               BlocProvider<PlaylistsBloc>(

@@ -13,7 +13,14 @@ class MusicControllerStateData extends MusicControllerState {
 
   bool isShuffle = false;
   RepeatMode repeatMode = RepeatMode.off;
-  LofiPreset lofiPreset = LofiPreset.off;
+
+  // --- audiofx panel ---
+  bool eqEnabled = false;
+  int eqPreset = -1; // -1 = custom
+  List<int> eqBands = <int>[]; // millibels per band; length == caps.bandCount
+  int bassBoost = 0; // 0..1000
+  int virtualizer = 0; // 0..1000
+  ReverbPreset reverbPreset = ReverbPreset.none;
 
   SongModel? song;
   int index = 0;

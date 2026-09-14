@@ -4,33 +4,34 @@ enum RepeatMode { off, one, all }
 
 enum SongSortField { title, length, date, size }
 
-/// The "Lofi" colouring, applied natively by LofiAudioProcessor (low-pass +
-/// high-pass + short feedback delay for depth). [wetLevel] is the 0..1 value
-/// handed to the processor.
-enum LofiPreset {
-  off,
-  lofi,
-  deep;
+/// Index maps 1:1 onto android.media.audiofx.PresetReverb's
+/// PRESET_NONE / SMALLROOM / MEDIUMROOM / LARGEROOM / MEDIUMHALL / LARGEHALL /
+/// PLATE constants (0..6). The native side decides how to realise it.
+enum ReverbPreset {
+  none,
+  smallRoom,
+  mediumRoom,
+  largeRoom,
+  mediumHall,
+  largeHall,
+  plate;
 
   String get label {
     switch (this) {
-      case LofiPreset.off:
-        return 'Off';
-      case LofiPreset.lofi:
-        return 'Lofi';
-      case LofiPreset.deep:
-        return 'Deep';
-    }
-  }
-
-  double get wetLevel {
-    switch (this) {
-      case LofiPreset.off:
-        return 0.0;
-      case LofiPreset.lofi:
-        return 0.6;
-      case LofiPreset.deep:
-        return 1.0;
+      case ReverbPreset.none:
+        return 'None';
+      case ReverbPreset.smallRoom:
+        return 'Small Room';
+      case ReverbPreset.mediumRoom:
+        return 'Medium Room';
+      case ReverbPreset.largeRoom:
+        return 'Large Room';
+      case ReverbPreset.mediumHall:
+        return 'Medium Hall';
+      case ReverbPreset.largeHall:
+        return 'Large Hall';
+      case ReverbPreset.plate:
+        return 'Plate';
     }
   }
 }

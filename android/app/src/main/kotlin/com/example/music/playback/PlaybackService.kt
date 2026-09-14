@@ -1,6 +1,5 @@
 package com.example.music.playback
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -13,13 +12,13 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
-import androidx.media3.exoplayer.audio.AudioSink
-import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.CacheBitmapLoader
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import com.example.music.R
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 
@@ -39,22 +38,8 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private var mediaSession: MediaSession? = null
 
-    /**
-     * The "Lofi" effect. It lives in the ExoPlayer AudioProcessor chain (see
-     * [buildRenderersFactory]) rather than android.media.audiofx, so it works
-     * on every device - the Vivo test device's AudioFlinger flatly refuses to
-     * create a PresetReverb. Independent of the queue: changing tracks does
-     * not reset it, and it never touches queue state.
-     */
-    private val lofiProcessor = LofiAudioProcessor()
-
-    /**
-     * Tracked so a later equalizer / bass-boost / virtualizer pass can attach
-     * android.media.audiofx effects to whatever AudioTrack is currently
-     * playing. Not otherwise consumed yet.
-     */
-    var currentAudioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
-        private set
+    /** Equalizer / bass boost / virtualizer / reverb - see the class doc. */
+    private val audioEffects = AudioEffectsController()
 
     override fun onCreate() {
         super.onCreate()
@@ -65,7 +50,7 @@ class PlaybackService : MediaSessionService() {
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
 
-        player = ExoPlayer.Builder(this, buildRenderersFactory())
+        player = ExoPlayer.Builder(this, DefaultRenderersFactory(this).setEnableDecoderFallback(true))
             .setLoadControl(buildLoadControl())
             .setAudioAttributes(audioAttributes, /* handleAudioFocus= */ true)
             .setHandleAudioBecomingNoisy(true)
@@ -79,7 +64,7 @@ class PlaybackService : MediaSessionService() {
                     eventTime: AnalyticsListener.EventTime,
                     audioSessionId: Int,
                 ) {
-                    currentAudioSessionId = audioSessionId
+                    audioEffects.onSessionId(audioSessionId)
                 }
             }
         )
@@ -88,12 +73,23 @@ class PlaybackService : MediaSessionService() {
             .setCallback(PlaybackSessionCallback())
             .setBitmapLoader(CacheBitmapLoader(ArtworkBitmapLoader(this)))
             .build()
+
+        // Media3's own default small icon is a generic bundled music note -
+        // use the app icon instead. (The status bar only ever renders its
+        // alpha shape as a plain tinted silhouette, per Android's own
+        // notification-icon rules - that's normal OS behaviour, not a bug.)
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider(this).apply {
+                setSmallIcon(R.mipmap.ic_launcher)
+            }
+        )
     }
 
     /**
-     * Custom MediaSession commands for things with no built-in Player command
-     * (currently just the Lofi level). Queue/playback commands all stay on the
-     * standard Player API - this is additive, not a parallel command path.
+     * Custom MediaSession commands for the audiofx panel (Equalizer / bass
+     * boost / virtualizer / reverb) - none of which have a built-in Player
+     * command. Queue/playback commands all stay on the standard Player API;
+     * this is additive.
      */
     private inner class PlaybackSessionCallback : MediaSession.Callback {
         override fun onConnect(
@@ -105,12 +101,14 @@ class PlaybackService : MediaSessionService() {
             // stub that grants Commands.EMPTY, not the real trust-aware
             // default (that lives in onConnectAsync()'s default, built via
             // this same two-arg AcceptedResultBuilder). Building it directly
-            // here gives the normal full player command set, plus our one
-            // custom session command on top.
+            // here gives the normal full player command set, plus our custom
+            // session commands on top.
             val builder = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-            val sessionCommands = builder.build().availableSessionCommands.buildUpon()
-                .add(SessionCommand(CMD_SET_LOFI, Bundle.EMPTY))
-                .build()
+            val sessionCommands = builder.build().availableSessionCommands.buildUpon().apply {
+                for (action in FX_COMMANDS) {
+                    add(SessionCommand(action, Bundle.EMPTY))
+                }
+            }.build()
             return builder.setAvailableSessionCommands(sessionCommands).build()
         }
 
@@ -120,38 +118,71 @@ class PlaybackService : MediaSessionService() {
             customCommand: SessionCommand,
             args: Bundle,
         ): ListenableFuture<SessionResult> {
-            if (customCommand.customAction == CMD_SET_LOFI) {
-                lofiProcessor.level = args.getFloat(KEY_LOFI_LEVEL, 0f)
-                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            val handled = when (customCommand.customAction) {
+                CMD_FX_EQ_ENABLED -> {
+                    audioEffects.setEqEnabled(args.getBoolean("enabled"))
+                    true
+                }
+                CMD_FX_EQ_PRESET -> {
+                    val bands = audioEffects.setEqPreset(
+                        args.getInt("preset", AudioEffectsController.PRESET_CUSTOM)
+                    )
+                    return Futures.immediateFuture(
+                        SessionResult(
+                            SessionResult.RESULT_SUCCESS,
+                            Bundle().apply { putIntArray("bands", bands) },
+                        )
+                    )
+                }
+                CMD_FX_EQ_BAND -> {
+                    audioEffects.setEqBand(args.getInt("band"), args.getInt("level"))
+                    true
+                }
+                CMD_FX_BASS_BOOST -> {
+                    audioEffects.setBassBoost(args.getInt("strength"))
+                    true
+                }
+                CMD_FX_VIRTUALIZER -> {
+                    audioEffects.setVirtualizer(args.getInt("strength"))
+                    true
+                }
+                CMD_FX_REVERB -> {
+                    audioEffects.setReverb(args.getInt("preset"))
+                    true
+                }
+                CMD_FX_CAPS -> {
+                    return Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS, audioEffects.capabilities())
+                    )
+                }
+                else -> false
             }
-            return super.onCustomCommand(session, controller, customCommand, args)
+            return if (handled) {
+                Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            } else {
+                super.onCustomCommand(session, controller, customCommand, args)
+            }
         }
     }
 
     companion object {
-        const val CMD_SET_LOFI = "muxic.setLofi"
-        const val KEY_LOFI_LEVEL = "level"
-    }
+        const val CMD_FX_EQ_ENABLED = "muxic.fx.eqEnabled"
+        const val CMD_FX_EQ_PRESET = "muxic.fx.eqPreset"
+        const val CMD_FX_EQ_BAND = "muxic.fx.eqBand"
+        const val CMD_FX_BASS_BOOST = "muxic.fx.bassBoost"
+        const val CMD_FX_VIRTUALIZER = "muxic.fx.virtualizer"
+        const val CMD_FX_REVERB = "muxic.fx.reverb"
+        const val CMD_FX_CAPS = "muxic.fx.caps"
 
-    private fun buildRenderersFactory(): DefaultRenderersFactory {
-        return object : DefaultRenderersFactory(this) {
-            override fun buildAudioSink(
-                context: Context,
-                enableFloatOutput: Boolean,
-                enableAudioOutputPlaybackParams: Boolean,
-            ): AudioSink {
-                // The Lofi processor sits first in the chain; Media3 appends
-                // its own silence-skipping + Sonic (speed/pitch) processors
-                // after it, so both keep working.
-                return DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(enableFloatOutput)
-                    .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
-                    .setAudioProcessorChain(
-                        DefaultAudioSink.DefaultAudioProcessorChain(lofiProcessor)
-                    )
-                    .build()
-            }
-        }.setEnableDecoderFallback(true)
+        private val FX_COMMANDS = listOf(
+            CMD_FX_EQ_ENABLED,
+            CMD_FX_EQ_PRESET,
+            CMD_FX_EQ_BAND,
+            CMD_FX_BASS_BOOST,
+            CMD_FX_VIRTUALIZER,
+            CMD_FX_REVERB,
+            CMD_FX_CAPS,
+        )
     }
 
     private fun buildLoadControl(): DefaultLoadControl {
@@ -182,6 +213,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        audioEffects.release()
         mediaSession?.release()
         mediaSession = null
         player.release()
@@ -195,6 +227,14 @@ class PlaybackService : MediaSessionService() {
      */
     private inner class PlaybackEventListener : Player.Listener {
         private var hasRetriedCurrentItem = false
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) {
+                // The AudioTrack is live now - some OEM audio stacks won't
+                // create effects any earlier than this.
+                audioEffects.reattachIfNeeded(player.audioSessionId)
+            }
+        }
 
         override fun onPlayerError(error: PlaybackException) {
             Log.e(TAG, "onPlayerError: ${error.errorCodeName}", error)

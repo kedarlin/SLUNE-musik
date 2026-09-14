@@ -10,11 +10,17 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Keeps the process alive while the offline lyrics engine (VAD +
+         Whisper, running in a Dart isolate) processes a song in the background. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Android 13+ requires this before a media notification can be shown -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Held for ExoPlayer's setWakeMode(C.WAKE_MODE_LOCAL), which keeps the
          CPU awake during background playback. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Only used by the opt-in "Search Online" lyrics lookup (lrclib.net) -
+         the app performs no other network activity anywhere. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
 
     <application
@@ -58,6 +64,13 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Holds the process open while the offline lyrics engine works on a
+             song in the background. Does no work itself. -->
+        <service
+            android:name=".lyrics.LyricsForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

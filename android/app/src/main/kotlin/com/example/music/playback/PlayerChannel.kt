@@ -16,6 +16,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
@@ -201,18 +202,108 @@ class PlayerChannel(context: Context) {
                 if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
             }
             "clearQueue" -> withController(result) { it.clearMediaItems() }
-            "setLofi" -> withController(result) { c ->
-                val level = (args?.get("level") as? Double)?.toFloat() ?: 0f
-                val commandArgs = Bundle().apply {
-                    putFloat(PlaybackService.KEY_LOFI_LEVEL, level)
-                }
-                c.sendCustomCommand(
-                    SessionCommand(PlaybackService.CMD_SET_LOFI, Bundle.EMPTY),
-                    commandArgs,
-                )
+            "setEqEnabled" -> sendFx(result, PlaybackService.CMD_FX_EQ_ENABLED) {
+                putBoolean("enabled", (args?.get("enabled") as? Boolean) ?: false)
             }
+            "setEqPreset" -> {
+                val preset = (args?.get("preset") as? Int) ?: -1
+                val current = controller
+                if (current == null) {
+                    result.success(emptyList<Int>())
+                } else {
+                    val future = current.sendCustomCommand(
+                        SessionCommand(PlaybackService.CMD_FX_EQ_PRESET, Bundle.EMPTY),
+                        Bundle().apply { putInt("preset", preset) },
+                    )
+                    Futures.addCallback(
+                        future,
+                        object : FutureCallback<SessionResult> {
+                            override fun onSuccess(value: SessionResult) {
+                                result.success(
+                                    value.extras.getIntArray("bands")?.toList()
+                                        ?: emptyList<Int>()
+                                )
+                            }
+
+                            override fun onFailure(t: Throwable) {
+                                result.success(emptyList<Int>())
+                            }
+                        },
+                        MoreExecutors.directExecutor(),
+                    )
+                }
+            }
+            "setEqBand" -> sendFx(result, PlaybackService.CMD_FX_EQ_BAND) {
+                putInt("band", (args?.get("band") as? Int) ?: 0)
+                putInt("level", (args?.get("level") as? Int) ?: 0)
+            }
+            "setBassBoost" -> sendFx(result, PlaybackService.CMD_FX_BASS_BOOST) {
+                putInt("strength", (args?.get("strength") as? Int) ?: 0)
+            }
+            "setVirtualizer" -> sendFx(result, PlaybackService.CMD_FX_VIRTUALIZER) {
+                putInt("strength", (args?.get("strength") as? Int) ?: 0)
+            }
+            "setReverb" -> sendFx(result, PlaybackService.CMD_FX_REVERB) {
+                putInt("preset", (args?.get("preset") as? Int) ?: 0)
+            }
+            "getFxCaps" -> getFxCaps(result)
             else -> result.notImplemented()
         }
+    }
+
+    /** Fire-and-forget custom command to the audiofx layer. */
+    private fun sendFx(result: Result, action: String, args: Bundle.() -> Unit) {
+        val current = controller
+        val bundle = Bundle().apply(args)
+        val send: (MediaController) -> Unit = { c ->
+            c.sendCustomCommand(SessionCommand(action, Bundle.EMPTY), bundle)
+        }
+        if (current != null) {
+            send(current)
+        } else {
+            pendingCommands.add(send)
+        }
+        result.success(null)
+    }
+
+    private fun getFxCaps(result: Result) {
+        val current = controller
+        if (current == null) {
+            result.success(null)
+            return
+        }
+        val future = current.sendCustomCommand(
+            SessionCommand(PlaybackService.CMD_FX_CAPS, Bundle.EMPTY),
+            Bundle.EMPTY,
+        )
+        Futures.addCallback(
+            future,
+            object : FutureCallback<SessionResult> {
+                override fun onSuccess(value: SessionResult) {
+                    val b = value.extras
+                    result.success(
+                        mapOf(
+                            "eqAvailable" to b.getBoolean("eqAvailable"),
+                            "bandCount" to b.getInt("bandCount"),
+                            "centerFreqsMilliHz" to
+                                (b.getIntArray("centerFreqsMilliHz")?.toList() ?: emptyList<Int>()),
+                            "minLevelMb" to b.getInt("minLevelMb"),
+                            "maxLevelMb" to b.getInt("maxLevelMb"),
+                            "presetNames" to
+                                (b.getStringArray("presetNames")?.toList() ?: emptyList<String>()),
+                            "bassBoostAvailable" to b.getBoolean("bassBoostAvailable"),
+                            "virtualizerAvailable" to b.getBoolean("virtualizerAvailable"),
+                            "reverbAvailable" to b.getBoolean("reverbAvailable"),
+                        )
+                    )
+                }
+
+                override fun onFailure(t: Throwable) {
+                    result.success(null)
+                }
+            },
+            MoreExecutors.directExecutor(),
+        )
     }
 
     private fun toMediaItem(map: Map<*, *>): MediaItem {

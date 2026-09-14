@@ -109,17 +109,28 @@ class _HomePageState extends State<HomePage>
                           .clamp(0.0, 1.0)
                     : 0.0;
 
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(8.w, 0, 8.w, 8.h),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(32.r),
-                    onTap: () {
-                      Utils.openPlayerBottomSheet(
-                        context,
-                        song,
-                        _musicControllerBloc.stateData.index,
-                      );
-                    },
+                return GestureDetector(
+                  // Swipe left -> next song, swipe right -> previous song.
+                  onHorizontalDragEnd: (DragEndDetails details) {
+                    final double? velocity = details.primaryVelocity;
+                    if (velocity == null || velocity == 0) {
+                      return;
+                    }
+                    _musicControllerBloc.add(
+                      velocity < 0 ? NextSong() : PreviousSong(),
+                    );
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(8.w, 0, 8.w, 8.h),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(32.r),
+                      onTap: () {
+                        Utils.openPlayerBottomSheet(
+                          context,
+                          song,
+                          _musicControllerBloc.stateData.index,
+                        );
+                      },
                     child: Container(
                       decoration: BoxDecoration(
                         color: AppColors.surface,
@@ -203,6 +214,7 @@ class _HomePageState extends State<HomePage>
                         ],
                       ),
                     ),
+                  ),
                   ),
                 );
               },

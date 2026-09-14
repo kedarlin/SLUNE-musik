@@ -9,10 +9,13 @@ import 'package:marquee/marquee.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 import '../core/app_constants/app_enums.dart';
+import '../core/bloc/lyrics_bloc/lyrics_bloc.dart';
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/bloc/songs_bloc/songs_bloc.dart';
 import '../core/common_widgets.dart/player_options_sheet.dart';
 import '../core/theme/app_colors.dart';
+import 'equalizer_sheet.dart';
+import 'lyrics_view.dart';
 import 'playing_queue_sheet.dart';
 
 class MusicPlayerPage extends StatefulWidget {
@@ -28,14 +31,17 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     with TickerProviderStateMixin {
   late MusicControllerBloc _musicControllerBloc;
   late SongsBloc _songsBloc;
+  late LyricsBloc _lyricsBloc;
   late AnimationController _rotationController;
   late AnimationController _tonearmController;
+  bool _showLyrics = false;
 
   @override
   void initState() {
     super.initState();
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
+    _lyricsBloc = BlocProvider.of<LyricsBloc>(context);
 
     _rotationController = AnimationController(
       vsync: this,
@@ -61,6 +67,19 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     final int minutes = totalSeconds ~/ 60;
     final int seconds = totalSeconds % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// Swipe left -> next song, swipe right -> previous song.
+  void _onSwipeChangeSong(DragEndDetails details) {
+    final double? velocity = details.primaryVelocity;
+    if (velocity == null || velocity == 0) {
+      return;
+    }
+    if (velocity < 0) {
+      _musicControllerBloc.add(NextSong());
+    } else {
+      _musicControllerBloc.add(PreviousSong());
+    }
   }
 
   void _showSpeedPitchSheet() {
@@ -109,81 +128,21 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                     onChanged: (double value) =>
                         _musicControllerBloc.add(PitchChanged(value)),
                   ),
-                  SizedBox(height: 20.h),
-                  Text(
-                    'Lofi',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                  SizedBox(height: 10.h),
-                  Wrap(
-                    spacing: 8.w,
-                    runSpacing: 8.h,
-                    children: LofiPreset.values.map((LofiPreset preset) {
-                      final bool selected =
-                          _musicControllerBloc.stateData.lofiPreset == preset;
-                      return ChoiceChip(
-                        label: Text(preset.label),
-                        selected: selected,
-                        onSelected: (_) =>
-                            _musicControllerBloc.add(LofiPresetChanged(preset)),
-                        selectedColor: AppColors.accent,
-                        backgroundColor: AppColors.surface,
-                        labelStyle: TextStyle(
-                          color: selected
-                              ? AppColors.background
-                              : AppColors.textPrimary,
-                          fontSize: 13.sp,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  SizedBox(height: 20.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      TextButton.icon(
-                        onPressed: () {
-                          _musicControllerBloc.add(SpeedChanged(0.9));
-                          _musicControllerBloc.add(PitchChanged(0.95));
-                          _musicControllerBloc.add(
-                            LofiPresetChanged(LofiPreset.deep),
-                          );
-                        },
-                        icon: Icon(
-                          Icons.blur_on_rounded,
-                          size: 18.sp,
+                  SizedBox(height: 8.h),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        _musicControllerBloc.add(SpeedChanged(1.0));
+                        _musicControllerBloc.add(PitchChanged(1.0));
+                      },
+                      child: Text(
+                        'Reset',
+                        style: TextStyle(
                           color: AppColors.accent,
-                        ),
-                        label: Text(
-                          'Slowed + Lofi',
-                          style: TextStyle(
-                            color: AppColors.accent,
-                            fontSize: 14.sp,
-                          ),
+                          fontSize: 15.sp,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          _musicControllerBloc.add(SpeedChanged(1.0));
-                          _musicControllerBloc.add(PitchChanged(1.0));
-                          _musicControllerBloc.add(
-                            LofiPresetChanged(LofiPreset.off),
-                          );
-                        },
-                        child: Text(
-                          'Reset',
-                          style: TextStyle(
-                            color: AppColors.textPrimary.withValues(
-                              alpha: 0.75,
-                            ),
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -191,6 +150,20 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           },
         );
       },
+    );
+  }
+
+  void _showEqualizerSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.surfaceHigh,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (BuildContext sheetContext) =>
+          EqualizerSheet(musicBloc: _musicControllerBloc),
     );
   }
 
@@ -272,8 +245,25 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                       SizedBox(height: 12.h),
                       _buildTopBar(song),
                       Expanded(
-                        child: Center(
-                          child: FittedBox(child: _buildTurntable(song)),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          child: _showLyrics
+                              ? LyricsView(
+                                  key: const ValueKey<String>('lyrics'),
+                                  lyricsBloc: _lyricsBloc,
+                                  musicBloc: _musicControllerBloc,
+                                )
+                              : GestureDetector(
+                                  key: const ValueKey<String>('disc'),
+                                  onTap: () =>
+                                      setState(() => _showLyrics = true),
+                                  onHorizontalDragEnd: _onSwipeChangeSong,
+                                  child: Center(
+                                    child: FittedBox(
+                                      child: _buildTurntable(song),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
                       _buildUtilityRow(song, isFavorite),
@@ -341,7 +331,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   }
 
   Widget _buildTurntable(SongModel? song) {
-    final double discSize = 0.78.sw;
+    final double discSize = 0.8.sw;
 
     return SizedBox(
       width: 1.sw,
@@ -423,17 +413,24 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          Icon(Icons.tune_rounded, size: 24.sp, color: AppColors.disabled),
+          IconButton(
+            onPressed: _showEqualizerSheet,
+            icon: Icon(
+              Icons.tune_rounded,
+              size: 26.sp,
+              color: AppColors.textPrimary,
+            ),
+          ),
           Icon(
             Icons.compare_arrows_rounded,
-            size: 24.sp,
+            size: 26.sp,
             color: AppColors.disabled,
           ),
           IconButton(
             onPressed: _showSpeedPitchSheet,
             icon: Icon(
               Icons.speed_rounded,
-              size: 24.sp,
+              size: 26.sp,
               color: AppColors.textPrimary,
             ),
           ),
@@ -451,7 +448,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
               isFavorite
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
-              size: 24.sp,
+              size: 26.sp,
               color: isFavorite ? AppColors.accent : AppColors.textPrimary,
             ),
           ),
@@ -461,7 +458,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 : () => PlayerOptionsSheet.show(context, song: song),
             icon: Icon(
               Icons.more_vert_rounded,
-              size: 24.sp,
+              size: 26.sp,
               color: AppColors.textPrimary,
             ),
           ),
@@ -475,21 +472,30 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     final int position = _musicControllerBloc.stateData.position;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      padding: EdgeInsets.symmetric(horizontal: 12.w),
       child: Column(
         children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Text(
-                _formatTime(position),
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp),
-              ),
-              Text(
-                _formatTime(duration),
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp),
-              ),
-            ],
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  _formatTime(position),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.sp,
+                  ),
+                ),
+                Text(
+                  _formatTime(duration),
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ],
+            ),
           ),
           SliderTheme(
             data: SliderThemeData(
@@ -571,24 +577,32 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
 
   Widget _buildBottomRow() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      padding: EdgeInsets.symmetric(horizontal: 34.w),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.lyrics_outlined,
-                size: 22.sp,
-                color: AppColors.disabled,
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                'Lyrics',
-                style: TextStyle(color: AppColors.disabled, fontSize: 15.sp),
-              ),
-            ],
+          InkWell(
+            onTap: () => setState(() => _showLyrics = !_showLyrics),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  _showLyrics ? Icons.lyrics_rounded : Icons.lyrics_outlined,
+                  size: 22.sp,
+                  color: _showLyrics ? AppColors.accent : AppColors.textPrimary,
+                ),
+                SizedBox(width: 8.w),
+                Text(
+                  'Lyrics',
+                  style: TextStyle(
+                    color: _showLyrics
+                        ? AppColors.accent
+                        : AppColors.textPrimary,
+                    fontSize: 15.sp,
+                  ),
+                ),
+              ],
+            ),
           ),
           InkWell(
             onTap: () => PlayingQueueSheet.show(context),

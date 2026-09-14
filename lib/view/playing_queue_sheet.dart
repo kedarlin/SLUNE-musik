@@ -19,7 +19,10 @@ class PlayingQueueSheet {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       builder: (BuildContext sheetContext) {
-        return _QueueSheetBody(musicBloc: musicBloc, sheetContext: sheetContext);
+        return _QueueSheetBody(
+          musicBloc: musicBloc,
+          sheetContext: sheetContext,
+        );
       },
     );
   }
@@ -101,7 +104,7 @@ class _QueueSheetBodyState extends State<_QueueSheetBody> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 16.h, 8.w, 12.h),
+                padding: EdgeInsets.fromLTRB(20.w, 12.h, 8.w, 12.h),
                 child: Row(
                   children: <Widget>[
                     Expanded(
@@ -111,7 +114,7 @@ class _QueueSheetBodyState extends State<_QueueSheetBody> {
                             'Playing Queue',
                             style: TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 18.sp,
+                              fontSize: 16.sp,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -216,7 +219,8 @@ class _QueueRow extends StatelessWidget {
           : AppColors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
+        child: Container(
+          height: 40.h,
           padding: EdgeInsets.symmetric(horizontal: 12.w),
           child: Row(
             children: <Widget>[
@@ -261,6 +265,7 @@ class _QueueRow extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onRemove,
+                visualDensity: VisualDensity.compact,
                 icon: Icon(
                   Icons.close_rounded,
                   size: 20.sp,

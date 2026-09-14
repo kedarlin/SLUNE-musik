@@ -34,7 +34,13 @@ class MusicControllerBloc
     on<PreviousSong>(_onPreviousSong);
     on<ToggleShuffle>(_onToggleShuffle);
     on<ChangeRepeatMode>(_onChangeRepeatMode);
-    on<LofiPresetChanged>(_onLofiPresetChanged);
+    on<EqEnabledChanged>(_onEqEnabledChanged);
+    on<EqPresetSelected>(_onEqPresetSelected);
+    on<EqBandChanged>(_onEqBandChanged);
+    on<BassBoostChanged>(_onBassBoostChanged);
+    on<VirtualizerChanged>(_onVirtualizerChanged);
+    on<ReverbPresetChanged>(_onReverbPresetChanged);
+    on<EqBandsInitialized>(_onEqBandsInitialized);
     on<PlayerStateReceived>(_onPlayerStateReceived);
     on<ShuffleAll>(_onShuffleAll);
     on<PlayNext>(_onPlayNext);
@@ -68,21 +74,32 @@ class MusicControllerBloc
 
   Box<dynamic> get _settingsBox => Hive.box<dynamic>('settings');
 
-  /// Speed / pitch / lofi are sticky across sessions and across tracks - the
-  /// user sets a "slowed + lofi" vibe once and it stays until changed.
+  /// Speed / pitch / equalizer / reverb are all sticky across sessions and
+  /// across tracks - the user dials in a sound once and it stays.
   void _restoreAudioFxPreferences() {
     stateData.speed =
         (_settingsBox.get('fxSpeed', defaultValue: 1.0) as num).toDouble();
     stateData.pitch =
         (_settingsBox.get('fxPitch', defaultValue: 1.0) as num).toDouble();
 
-    final int lofiIndex = _settingsBox.get('fxLofi', defaultValue: 0) as int;
-    stateData.lofiPreset =
-        LofiPreset.values[lofiIndex.clamp(0, LofiPreset.values.length - 1)];
+    stateData.eqEnabled =
+        _settingsBox.get('fxEqEnabled', defaultValue: false) as bool;
+    stateData.eqPreset = _settingsBox.get('fxEqPreset', defaultValue: -1) as int;
+    stateData.eqBands = (_settingsBox.get('fxEqBands', defaultValue: <int>[])
+            as List<dynamic>)
+        .map((dynamic e) => e as int)
+        .toList();
+    stateData.bassBoost = _settingsBox.get('fxBass', defaultValue: 0) as int;
+    stateData.virtualizer = _settingsBox.get('fxVirt', defaultValue: 0) as int;
+
+    final int reverbIndex =
+        _settingsBox.get('fxReverb', defaultValue: 0) as int;
+    stateData.reverbPreset = ReverbPreset
+        .values[reverbIndex.clamp(0, ReverbPreset.values.length - 1)];
   }
 
-  /// Pushes the restored speed/pitch/lofi to the player. Called after a
-  /// queue is (re)set, since a fresh ExoPlayer starts at 1.0x / no lofi.
+  /// Pushes the restored speed/pitch/effects to the player. Called after a
+  /// queue is (re)set, since a fresh ExoPlayer starts flat.
   Future<void> _applyAudioFx() async {
     if (stateData.speed != 1.0) {
       await _player.setSpeed(stateData.speed);
@@ -90,8 +107,25 @@ class MusicControllerBloc
     if (stateData.pitch != 1.0) {
       await _player.setPitch(stateData.pitch);
     }
-    if (stateData.lofiPreset != LofiPreset.off) {
-      await _player.setLofi(stateData.lofiPreset.wetLevel);
+
+    if (stateData.eqEnabled) {
+      await _player.setEqEnabled(true);
+      if (stateData.eqPreset >= 0) {
+        await _player.setEqPreset(stateData.eqPreset);
+      } else {
+        for (int band = 0; band < stateData.eqBands.length; band++) {
+          await _player.setEqBand(band, stateData.eqBands[band]);
+        }
+      }
+    }
+    if (stateData.bassBoost > 0) {
+      await _player.setBassBoost(stateData.bassBoost);
+    }
+    if (stateData.virtualizer > 0) {
+      await _player.setVirtualizer(stateData.virtualizer);
+    }
+    if (stateData.reverbPreset != ReverbPreset.none) {
+      await _player.setReverb(stateData.reverbPreset.index);
     }
   }
 
@@ -277,6 +311,8 @@ class MusicControllerBloc
     }
 
     stateData.isPlaying = !stateData.isPlaying;
+    // Capture the resume point now - app kills often skip close().
+    _persistSession();
     emit(stateData);
   }
 
@@ -376,13 +412,106 @@ class MusicControllerBloc
     emit(stateData);
   }
 
-  Future<void> _onLofiPresetChanged(
-    LofiPresetChanged event,
+  // --- audiofx panel ---------------------------------------------------
+
+  Future<void> _onEqBandsInitialized(
+    EqBandsInitialized event,
     Emitter<MusicControllerState> emit,
   ) async {
-    await _player.setLofi(event.preset.wetLevel);
-    stateData.lofiPreset = event.preset;
-    await _settingsBox.put('fxLofi', event.preset.index);
+    if (stateData.eqBands.length != event.bandCount) {
+      final List<int> sized = List<int>.filled(event.bandCount, 0);
+      for (int i = 0; i < event.bandCount && i < stateData.eqBands.length; i++) {
+        sized[i] = stateData.eqBands[i];
+      }
+      stateData.eqBands = sized;
+    }
+    emit(stateData);
+  }
+
+  Future<void> _onEqEnabledChanged(
+    EqEnabledChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.eqEnabled = event.enabled;
+    await _player.setEqEnabled(event.enabled);
+    if (event.enabled) {
+      // (Re)push the current curve so a device that just got its Equalizer
+      // enabled reflects it immediately.
+      if (stateData.eqPreset >= 0) {
+        await _player.setEqPreset(stateData.eqPreset);
+      } else {
+        for (int band = 0; band < stateData.eqBands.length; band++) {
+          await _player.setEqBand(band, stateData.eqBands[band]);
+        }
+      }
+    }
+    await _settingsBox.put('fxEqEnabled', event.enabled);
+    emit(stateData);
+  }
+
+  /// The equalizer sheet has already applied the preset natively (it needs the
+  /// resolved curve for its sliders) - this only mirrors + persists it.
+  Future<void> _onEqPresetSelected(
+    EqPresetSelected event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.eqPreset = event.preset;
+    if (event.bandLevelsMb.isNotEmpty) {
+      stateData.eqBands = List<int>.from(event.bandLevelsMb);
+    }
+    await _settingsBox.put('fxEqPreset', event.preset);
+    await _settingsBox.put('fxEqBands', stateData.eqBands);
+    emit(stateData);
+  }
+
+  Future<void> _onEqBandChanged(
+    EqBandChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    if (event.band < 0) {
+      return;
+    }
+    if (stateData.eqBands.length <= event.band) {
+      stateData.eqBands = <int>[
+        ...stateData.eqBands,
+        ...List<int>.filled(event.band + 1 - stateData.eqBands.length, 0),
+      ];
+    }
+    stateData.eqBands[event.band] = event.levelMb;
+    stateData.eqPreset = -1; // custom
+    await _player.setEqBand(event.band, event.levelMb);
+    await _settingsBox.put('fxEqPreset', -1);
+    await _settingsBox.put('fxEqBands', stateData.eqBands);
+    emit(stateData);
+  }
+
+  Future<void> _onBassBoostChanged(
+    BassBoostChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.bassBoost = event.strength.clamp(0, 1000);
+    await _player.setBassBoost(stateData.bassBoost);
+    await _settingsBox.put('fxBass', stateData.bassBoost);
+    emit(stateData);
+  }
+
+  Future<void> _onVirtualizerChanged(
+    VirtualizerChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.virtualizer = event.strength.clamp(0, 1000);
+    await _player.setVirtualizer(stateData.virtualizer);
+    await _settingsBox.put('fxVirt', stateData.virtualizer);
+    emit(stateData);
+  }
+
+  Future<void> _onReverbPresetChanged(
+    ReverbPresetChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.reverbPreset = event.preset;
+    await _player.setReverb(event.preset.index);
+    await _settingsBox.put('fxReverb', event.preset.index);
     emit(stateData);
   }
 
