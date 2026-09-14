@@ -65,7 +65,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   /// [stateData], so a stray late result can never get displayed under the
   /// wrong song.
   int? _generatingForSongId;
-  bool _aheadBusy = false;
   int? _lastSeenSongId;
 
   void _onMusicState(MusicControllerState _) {
@@ -130,14 +129,12 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
       ..lyrics = found
       ..status = found == null ? LyricsStatus.absent : LyricsStatus.present
       // AI-sourced or picked-from-online lyrics always need a human look
-      // before they're "final" - whether they were just generated live or
-      // produced ahead of time in the background (see _maybeGenerateAhead),
-      // the first time the user actually sees them they're still a draft.
+      // before they're "final" - the first time the user actually sees
+      // them they're still a draft, until they hit Save.
       ..isDraft =
           found?.source == LyricsSource.ai ||
           found?.source == LyricsSource.online;
     emit(stateData);
-    unawaited(_maybeGenerateAhead());
   }
 
   Future<void> _onTicked(
@@ -345,67 +342,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
       ..onlineCandidates = null
       ..onlineError = null;
     emit(stateData);
-  }
-
-  /// Generate-ahead: quietly transcribes the *next* queued song in the
-  /// background so it's already synced by the time the user reaches it,
-  /// instead of making them wait through the whole song first. Deliberately
-  /// only one track ahead, one job at a time - running two Whisper isolates
-  /// at once isn't worth the battery/CPU cost on a phone. Results are AI
-  /// drafts like any other generation - the review/save gate in
-  /// [_onSongChanged] still applies the first time the user actually looks.
-  Future<void> _maybeGenerateAhead() async {
-    if (_aheadBusy || stateData.status == LyricsStatus.generating) {
-      return;
-    }
-    if (!await _transcriber.isReady()) {
-      return;
-    }
-
-    final List<SongModel> queue = _musicBloc.stateData.queue;
-    final int nextIndex = _musicBloc.stateData.index + 1;
-    if (nextIndex < 0 || nextIndex >= queue.length) {
-      return;
-    }
-
-    final SongModel next = queue[nextIndex];
-    if (await _repository.has(next)) {
-      return;
-    }
-
-    _aheadBusy = true;
-    try {
-      final List<LyricLine> lines = <LyricLine>[];
-      await for (final TranscriptionProgress progress in _transcriber.transcribe(next)) {
-        if (progress.partialLines.isNotEmpty) {
-          lines
-            ..clear()
-            ..addAll(progress.partialLines);
-        }
-        // Yield to an interactive generation the user asked for directly -
-        // breaking cancels this look-ahead job (its stream's onCancel tears
-        // down the isolate/service/temp file).
-        if (stateData.status == LyricsStatus.generating) {
-          break;
-        }
-      }
-      if (lines.isNotEmpty) {
-        await _repository.save(next, Lyrics.synced(lines, LyricsSource.ai));
-
-        // The user may have already reached this exact song while the
-        // background job was still running - in which case _onSongChanged
-        // resolved it as "absent" before the save above happened. Re-resolve
-        // now rather than leaving that view stuck stale.
-        if (stateData.song?.id == next.id) {
-          add(LyricsSongChanged(next));
-        }
-      }
-    } catch (_) {
-      // Best-effort - the user can still hit Generate manually once they
-      // reach this song.
-    } finally {
-      _aheadBusy = false;
-    }
   }
 
   Future<void> _onSaveRequested(

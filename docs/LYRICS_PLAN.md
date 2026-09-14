@@ -47,13 +47,11 @@ Android/data/com.example.music/files/
 
 - `LyricLine { Duration time; String text }`
 - `Lyrics { List<LyricLine> lines; bool synced; String? plainText; LyricsSource source; DateTime updatedAt }`
-- `LyricsSource`: `tag` | `lrc` | `ai` | `edited` — **any `ai`-sourced lyrics
-  are treated as an unreviewed draft** the first time the user actually looks
-  at them (`LyricsBloc` sets `isDraft` from `source`, not from "was this just
-  generated live") - this is what lets generate-ahead's background output
-  still go through the same review/save gate as an interactive generation.
-  Saving a draft (whether edited or accepted as-is) upgrades its source to
-  `edited`, so it never nags again.
+- `LyricsSource`: `tag` | `lrc` | `ai` | `edited` | `online` — **any
+  `ai`-or-`online`-sourced lyrics are treated as an unreviewed draft** the
+  first time the user actually looks at them (`LyricsBloc` sets `isDraft`
+  from `source`). Saving a draft (whether edited or accepted as-is) upgrades
+  its source to `edited`, so it never nags again.
 
 ## Phase A — lyrics infrastructure + UI (done)
 
@@ -61,8 +59,7 @@ Android/data/com.example.music/files/
 - `LyricsRepository` — `load`/`save`/`delete`/`exportForShare`, content-key
   hashing.
 - `LyricsBloc` — resolves lyrics on song change, tracks the active line off
-  the position stream, drives the generate/save/delete/share flow, and runs
-  generate-ahead (Phase D).
+  the position stream, drives the generate/save/delete/share flow.
 - `LyricsView` — replaces the turntable disc (tap disc, or the Lyrics
   button). Line-synced auto-scroll + highlight, tap a line to seek.
 - `LyricsEditorPage` — line list with editable text, tap-to-sync timestamps,
@@ -78,9 +75,9 @@ Pipeline, in order:
    16-bit PCM WAV to the app's temp dir. Runs on a plain background `Thread`.
 2. **Foreground service** (`LyricsForegroundService.kt`) — holds the process
    alive with an ongoing notification (app icon, same as the main playback
-   notification) while a job runs. Reference-counted in `LyricsChannel` (see Phase D -
-   generate-ahead means two jobs can genuinely overlap) so the service only
-   actually stops once nothing is using it.
+   notification) while a job runs. Reference-counted in `LyricsChannel` so an
+   overlapping cancel-and-restart can't yank the notification out from under
+   a job still in progress.
 3. **VAD + Whisper, in a spawned Dart isolate** (`sherpa_transcription_service.dart`,
    using the real `sherpa_onnx` package - verified against its actual API by
    fetching it and reading the source):
@@ -121,15 +118,17 @@ accuracy on a full mix proves insufficient.
 
 ## Phase D — polish (done)
 
-- **Generate-ahead** (`LyricsBloc._maybeGenerateAhead`) - after resolving the
-  current song, if the *next* queued song has no lyrics yet and the engine is
-  ready, transcribes it in the background (one track ahead, one job at a
-  time - it yields if the user starts an interactive generation for the song
-  they're actually looking at). Output is saved as an `ai`-sourced draft, so
-  it still goes through the normal review/save gate when the user reaches
-  that song. If the user reaches it while the background job is still
-  running, resolution re-runs once the job saves rather than leaving the view
-  stuck on a stale "no lyrics" result.
+- **Generate-ahead - built, then removed.** Originally transcribed the
+  *next* queued song in the background so it was ready by the time the user
+  reached it. Reverted: it required its own foreground-service notification
+  the user had no way to attribute to what they'd actually asked for
+  ("silent notification pops up for a song I didn't even ask to generate"),
+  and there is no way to make that notification optional - Android requires
+  one for any background work of this shape. Given the choice between
+  keeping automatic prefetch or making generation strictly opt-in, the user
+  chose strictly opt-in: lyrics now only ever generate from an explicit tap,
+  full stop. If revisited, it would need to be re-scoped around that
+  constraint rather than just re-added.
 - **`.lrc` sharing** - `LyricsRepository.exportForShare` writes a
   nicely-named temp copy; `LyricsView`'s overflow menu offers "Share .lrc"
   through the OS share sheet (`share_plus`).
@@ -171,19 +170,31 @@ action.
   `LyricsSource.online` and `isDraft = true` - a metadata match can still be
   the wrong version of a song, so it isn't trusted until the user hits Save
   (which upgrades it to `edited`, same as an AI draft).
-- **Never automatic.** Online lookups are not wired into generate-ahead or
-  triggered on song change - only an explicit tap starts one, so the app
-  makes zero network calls unless the user asks for this specific feature.
+- **Never automatic.** Online lookups are not triggered on song change or
+  anywhere else - only an explicit tap starts one, so the app makes zero
+  network calls unless the user asks for this specific feature. (This
+  matches offline generation too, now that generate-ahead is gone - nothing
+  in the lyrics feature ever runs without the user asking for it.)
 - **Deferred, discussed but not built:** a more accurate offline generator
   (e.g. real vocal source separation) - a separate future piece of work.
+
+## Renaming a song
+
+The content key (`LyricsRepository.contentKey`) is `size|duration|title`, so
+a title change orphans anything saved under the old key. The song-rename
+feature (`lib/core/utils/rename_song.dart`, native side in
+`android/.../library/SongsChannel.kt`) calls
+`LyricsRepository.remapForRename(oldSong, newTitle)` right after a
+successful rename - moves the Hive record and `.lrc` mirror from the old key
+to the new one - before the library re-fetch would otherwise make the old
+`SongModel` stale.
 
 ## Verification
 
 `flutter build apk --debug` compiles clean end-to-end after every phase -
 Kotlin (decoder/service/channel/reference-counting) and Dart (isolate/FFI
-glue, generate-ahead, share) all type-check, and every `sherpa_onnx` and
-`share_plus` call was checked against the real fetched package source, not
-assumed.
+glue, share) all type-check, and every `sherpa_onnx` and `share_plus` call
+was checked against the real fetched package source, not assumed.
 
 **Not verified (needs a device):** actual accuracy, timing, whether the
 vocal bandpass measurably helps, and real-world foreground-service behavior

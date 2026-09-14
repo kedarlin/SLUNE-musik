@@ -49,16 +49,22 @@ class LyricsRepository {
   /// MediaStore rows have null size/duration and `SongModel` getters throw on
   /// those.
   static String contentKey(SongModel song) {
-    int size = 0;
-    try {
-      size = song.size;
-    } catch (_) {
-      size = 0;
-    }
-    final int duration = song.duration ?? 0;
-    final String title = song.title.trim().toLowerCase();
-    return _fnv1a('$size|$duration|$title');
+    return _keyFor(size: _safeSize(song), duration: song.duration ?? 0, title: song.title);
   }
+
+  static int _safeSize(SongModel song) {
+    try {
+      return song.size;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static String _keyFor({
+    required int size,
+    required int duration,
+    required String title,
+  }) => _fnv1a('$size|$duration|${title.trim().toLowerCase()}');
 
   static String _fnv1a(String input) {
     // 32-bit FNV-1a, rendered as hex. No crypto dependency - this is a cache
@@ -123,6 +129,39 @@ class LyricsRepository {
       }
     } on FileSystemException {
       // ignore
+    }
+  }
+
+  /// The content key is title-derived, so renaming a song orphans anything
+  /// saved under its old key. Called right after a successful rename (before
+  /// the on_audio_query re-fetch that would otherwise make [oldSong] itself
+  /// stale) - moves the Hive record and `.lrc` mirror across, if either
+  /// exists. A no-op if nothing was saved for [oldSong].
+  Future<void> remapForRename(SongModel oldSong, String newTitle) async {
+    final String oldKey = contentKey(oldSong);
+    final String newKey = _keyFor(
+      size: _safeSize(oldSong),
+      duration: oldSong.duration ?? 0,
+      title: newTitle,
+    );
+    if (oldKey == newKey) {
+      return;
+    }
+
+    final Map<dynamic, dynamic>? record = _box.get(oldKey);
+    if (record != null) {
+      await _box.put(newKey, record);
+      await _box.delete(oldKey);
+    }
+
+    try {
+      final Directory dir = await _dir();
+      final File oldFile = File(p.join(dir.path, '$oldKey.lrc'));
+      if (oldFile.existsSync()) {
+        await oldFile.rename(p.join(dir.path, '$newKey.lrc'));
+      }
+    } on FileSystemException {
+      // Best effort - the Hive record above is the source of truth.
     }
   }
 

@@ -30,6 +30,7 @@ class _AllSongsPageState extends State<AllSongsPage>
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _listScrollController = ScrollController();
 
   @override
   void initState() {
@@ -170,10 +171,7 @@ class _AllSongsPageState extends State<AllSongsPage>
             'Muxic needs permission to read the audio files on your '
             'device to show your songs.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14.sp,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
           ),
           SizedBox(height: 20.h),
           FilledButton(
@@ -204,6 +202,7 @@ class _AllSongsPageState extends State<AllSongsPage>
     _debounce?.cancel();
     searchController.dispose();
     _searchFocusNode.dispose();
+    _listScrollController.dispose();
     super.dispose();
   }
 
@@ -346,54 +345,63 @@ class _AllSongsPageState extends State<AllSongsPage>
                   }
                   _songsBloc.add(FetchSongs(forceFetch: true));
                 },
-                child: ListView.builder(
-                  itemCount: isSearching
-                      ? _songsBloc.stateData.searchSongs.length
-                      : _songsBloc.stateData.songs.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final List<SongModel> displayList = isSearching
-                        ? _songsBloc.stateData.searchSongs
-                        : _songsBloc.stateData.songs;
-                    final SongModel song = displayList[index];
-                    final bool isFavorite = _songsBloc.stateData.favoriteIds
-                        .contains(song.id);
+                child: RawScrollbar(
+                  controller: _listScrollController,
+                  thumbColor: AppColors.textSecondary.withValues(alpha: 0.6),
+                  radius: Radius.circular(8.r),
+                  thickness: 4.w,
+                  thumbVisibility: false,
+                  child: ListView.builder(
+                    controller: _listScrollController,
+                    itemCount: isSearching
+                        ? _songsBloc.stateData.searchSongs.length
+                        : _songsBloc.stateData.songs.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final List<SongModel> displayList = isSearching
+                          ? _songsBloc.stateData.searchSongs
+                          : _songsBloc.stateData.songs;
+                      final SongModel song = displayList[index];
+                      final bool isFavorite = _songsBloc.stateData.favoriteIds
+                          .contains(song.id);
 
-                    // Playing a song always queues the full library so
-                    // next/previous works - even when tapped from a filtered
-                    // search result. Fall back to the visible list if the
-                    // song somehow isn't in the library list.
-                    final List<SongModel> fullList = _songsBloc.stateData.songs;
-                    final int fullIndex = fullList.indexWhere(
-                      (SongModel s) => s.id == song.id,
-                    );
-                    final List<SongModel> queue = fullIndex >= 0
-                        ? fullList
-                        : displayList;
-                    final int queueIndex = fullIndex >= 0 ? fullIndex : index;
+                      // Playing a song always queues the full library so
+                      // next/previous works - even when tapped from a filtered
+                      // search result. Fall back to the visible list if the
+                      // song somehow isn't in the library list.
+                      final List<SongModel> fullList =
+                          _songsBloc.stateData.songs;
+                      final int fullIndex = fullList.indexWhere(
+                        (SongModel s) => s.id == song.id,
+                      );
+                      final List<SongModel> queue = fullIndex >= 0
+                          ? fullList
+                          : displayList;
+                      final int queueIndex = fullIndex >= 0 ? fullIndex : index;
 
-                    return Padding(
-                      padding: EdgeInsetsGeometry.only(bottom: 8.h),
-                      child: SongTile(
-                        song: song,
-                        queue: queue,
-                        index: queueIndex,
-                        onMoreTap: () {
-                          SongOptionsSheet.show(
-                            context,
-                            song: song,
-                            isFavorite: isFavorite,
-                            onToggleFavorite: () {
-                              _songsBloc.add(
-                                isFavorite
-                                    ? RemoveFromFavorites(song.id)
-                                    : AddToFavorites(song.id),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    );
-                  },
+                      return Padding(
+                        padding: EdgeInsetsGeometry.only(bottom: 8.h),
+                        child: SongTile(
+                          song: song,
+                          queue: queue,
+                          index: queueIndex,
+                          onMoreTap: () {
+                            SongOptionsSheet.show(
+                              context,
+                              song: song,
+                              isFavorite: isFavorite,
+                              onToggleFavorite: () {
+                                _songsBloc.add(
+                                  isFavorite
+                                      ? RemoveFromFavorites(song.id)
+                                      : AddToFavorites(song.id),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             );

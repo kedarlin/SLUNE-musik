@@ -5,8 +5,10 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../bloc/playlists_bloc/playlists_bloc.dart';
+import '../bloc/songs_bloc/songs_bloc.dart';
 import '../theme/app_colors.dart';
 import 'playlist_picker.dart';
+import 'rename_song_dialog.dart';
 import 'sheet_action.dart';
 import 'song_sheet_header.dart';
 
@@ -14,6 +16,7 @@ class PlayerOptionsSheet {
   static void show(BuildContext context, {required SongModel song}) {
     final PlaylistsBloc playlistsBloc = context.read<PlaylistsBloc>();
     final MusicControllerBloc musicBloc = context.read<MusicControllerBloc>();
+    final SongsBloc songsBloc = context.read<SongsBloc>();
 
     showModalBottomSheet<void>(
       context: context,
@@ -46,6 +49,18 @@ class PlayerOptionsSheet {
                     onTap: () {
                       Navigator.of(sheetContext).pop();
                       PlaylistPicker.show(context, playlistsBloc, song);
+                    },
+                  ),
+                  SheetAction(
+                    icon: Icons.drive_file_rename_outline_rounded,
+                    label: 'Rename',
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                      RenameSongDialog.show(
+                        context,
+                        song: song,
+                        songsBloc: songsBloc,
+                      );
                     },
                   ),
                   SheetAction(
