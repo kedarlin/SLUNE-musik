@@ -46,4 +46,9 @@ dependencies {
     implementation("androidx.media3:media3-common:1.11.0")
     // For DataSourceBitmapLoader (notification artwork fallback).
     implementation("androidx.media3:media3-datasource:1.11.0")
+    // Writes the embedded ID3 title tag on rename - MediaStore's own TITLE
+    // column gets re-derived from this by MediaProvider on Android Q+, so a
+    // rename that only touches the database row gets silently reverted for
+    // any file that already carries a tag (confirmed on-device via logcat).
+    implementation("com.mpatric:mp3agic:0.9.1")
 }
