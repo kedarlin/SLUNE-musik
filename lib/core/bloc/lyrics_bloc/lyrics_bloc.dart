@@ -57,6 +57,14 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   StreamSubscription<TranscriptionProgress>? _genSub;
 
   int? _resolvingForSongId;
+
+  /// The song an interactive generation is currently running for. Cancelling
+  /// `_genSub` on a song change is not by itself a hard guarantee against a
+  /// result that was already in flight the instant the switch happened - the
+  /// progress/done/failed handlers below check against this before touching
+  /// [stateData], so a stray late result can never get displayed under the
+  /// wrong song.
+  int? _generatingForSongId;
   bool _aheadBusy = false;
   int? _lastSeenSongId;
 
@@ -83,6 +91,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   ) async {
     await _genSub?.cancel();
     _genSub = null;
+    _generatingForSongId = null;
 
     stateData
       ..song = event.song
@@ -173,6 +182,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     emit(stateData);
 
     await _genSub?.cancel();
+    _generatingForSongId = song.id;
     _genSub = _transcriber.transcribe(song).listen(
       (TranscriptionProgress p) => add(_LyricsGenerationProgress(p)),
       onError: (Object error) =>
@@ -187,10 +197,23 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     );
   }
 
+  /// Interactive generation's results all arrive asynchronously, well after
+  /// the user could have switched songs. Cancelling `_genSub` on a song
+  /// change stops the *work*, but a result already in flight at that exact
+  /// instant can still land here after the switch - checking the song these
+  /// results belong to still matches what's on screen is what actually stops
+  /// a stale transcription from ever getting displayed under the wrong song
+  /// (this is what caused generation to visibly "carry over" onto the next
+  /// track when it hadn't been saved yet).
+  bool _isStaleGeneration() => stateData.song?.id != _generatingForSongId;
+
   Future<void> _onGenerationProgress(
     _LyricsGenerationProgress event,
     Emitter<LyricsState> emit,
   ) async {
+    if (_isStaleGeneration()) {
+      return;
+    }
     stateData
       ..progress = event.progress.fraction
       ..phase = event.progress.phase;
@@ -209,6 +232,11 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   ) async {
     await _genSub?.cancel();
     _genSub = null;
+    if (_isStaleGeneration()) {
+      _generatingForSongId = null;
+      return;
+    }
+    _generatingForSongId = null;
     stateData
       ..lyrics = event.lyrics
       ..status = LyricsStatus.present
@@ -224,6 +252,11 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   ) async {
     await _genSub?.cancel();
     _genSub = null;
+    if (_isStaleGeneration()) {
+      _generatingForSongId = null;
+      return;
+    }
+    _generatingForSongId = null;
     stateData
       ..status = LyricsStatus.failed
       ..errorMessage = event.message;
@@ -236,6 +269,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   ) async {
     await _genSub?.cancel();
     _genSub = null;
+    _generatingForSongId = null;
     stateData
       ..status = stateData.lyrics == null
           ? LyricsStatus.absent
