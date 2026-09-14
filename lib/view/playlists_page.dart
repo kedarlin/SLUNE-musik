@@ -3,15 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../bloc/playlists/playlists_bloc.dart';
+import '../bloc/songs/songs_bloc.dart';
 import '../core/app_constants/playlist_constants.dart';
-import '../core/bloc/playlists_bloc/playlists_bloc.dart';
-import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/create_playlist_sheet.dart';
-import '../core/common_widgets.dart/playlist_thumbnail.dart';
-import '../core/common_widgets.dart/sheet_action.dart';
-import '../core/models/playlist_model.dart';
 import '../core/routes/app_routes.dart';
 import '../core/theme/app_colors.dart';
+import '../models/playlist_model.dart';
+import '../widgets/common/sheet_action.dart';
+import '../widgets/playlists/create_playlist_sheet.dart';
+import '../widgets/playlists/playlist_thumbnail.dart';
 
 class PlaylistsPage extends StatefulWidget {
   const PlaylistsPage({super.key});

@@ -3,16 +3,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+import '../bloc/music_controller/music_controller_bloc.dart';
+import '../bloc/playlists/playlists_bloc.dart';
+import '../bloc/songs/songs_bloc.dart';
 import '../core/app_constants/playlist_constants.dart';
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/bloc/playlists_bloc/playlists_bloc.dart';
-import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/playlist_thumbnail.dart';
-import '../core/common_widgets.dart/song_options_sheet.dart';
-import '../core/common_widgets.dart/song_tile.dart';
-import '../core/models/playlist_model.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
+import '../models/playlist_model.dart';
+import '../widgets/playlists/playlist_thumbnail.dart';
+import '../widgets/songs/song_options_sheet.dart';
+import '../widgets/songs/song_tile.dart';
 
 class PlaylistDetailPage extends StatefulWidget {
   const PlaylistDetailPage({required this.playlistId, super.key});

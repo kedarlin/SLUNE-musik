@@ -6,13 +6,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/song_list_skeleton.dart';
-import '../core/common_widgets.dart/song_options_sheet.dart';
-import '../core/common_widgets.dart/song_tile.dart';
-import '../core/common_widgets.dart/sort_options_dialog.dart';
+import '../bloc/music_controller/music_controller_bloc.dart';
+import '../bloc/songs/songs_bloc.dart';
 import '../core/theme/app_colors.dart';
+import '../widgets/songs/song_list_skeleton.dart';
+import '../widgets/songs/song_options_sheet.dart';
+import '../widgets/songs/song_tile.dart';
+import '../widgets/songs/sort_options_dialog.dart';
 
 class AllSongsPage extends StatefulWidget {
   const AllSongsPage({super.key});
@@ -382,7 +382,9 @@ class _AllSongsPageState extends State<AllSongsPage>
                       final List<SongModel> fullList =
                           _songsBloc.stateData.songs;
                       final int fullIndex = isSearching
-                          ? fullList.indexWhere((SongModel s) => s.id == song.id)
+                          ? fullList.indexWhere(
+                              (SongModel s) => s.id == song.id,
+                            )
                           : index;
                       final List<SongModel> queue = fullIndex >= 0
                           ? fullList

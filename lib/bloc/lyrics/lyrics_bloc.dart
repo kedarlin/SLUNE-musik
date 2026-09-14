@@ -5,11 +5,11 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../../models/lyrics.dart';
 import '../../models/online_lyrics_candidate.dart';
-import '../../services/lrc_codec.dart';
-import '../../services/lyrics_repository.dart';
-import '../../services/online_lyrics_service.dart';
-import '../../services/transcription_service.dart';
-import '../music_controller_bloc.dart/music_controller_bloc.dart';
+import '../../service/lrc_codec.dart';
+import '../../service/lyrics_repository.dart';
+import '../../service/online_lyrics_service.dart';
+import '../../service/transcription_service.dart';
+import '../music_controller/music_controller_bloc.dart';
 
 part 'lyrics_event.dart';
 part 'lyrics_state.dart';
@@ -76,11 +76,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     }
     if (stateData.status == LyricsStatus.present &&
         (stateData.lyrics?.synced ?? false)) {
-      add(
-        LyricsTicked(
-          Duration(milliseconds: _musicBloc.stateData.position),
-        ),
-      );
+      add(LyricsTicked(Duration(milliseconds: _musicBloc.stateData.position)));
     }
   }
 
@@ -137,10 +133,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     emit(stateData);
   }
 
-  Future<void> _onTicked(
-    LyricsTicked event,
-    Emitter<LyricsState> emit,
-  ) async {
+  Future<void> _onTicked(LyricsTicked event, Emitter<LyricsState> emit) async {
     final Lyrics? lyrics = stateData.lyrics;
     if (lyrics == null || !lyrics.synced) {
       return;
@@ -180,18 +173,20 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
 
     await _genSub?.cancel();
     _generatingForSongId = song.id;
-    _genSub = _transcriber.transcribe(song).listen(
-      (TranscriptionProgress p) => add(_LyricsGenerationProgress(p)),
-      onError: (Object error) =>
-          add(_LyricsGenerationFailed(error.toString())),
-      onDone: () {
-        final Lyrics? partial = stateData.lyrics;
-        if (partial != null && partial.synced) {
-          add(_LyricsGenerationDone(partial));
-        }
-      },
-      cancelOnError: true,
-    );
+    _genSub = _transcriber
+        .transcribe(song)
+        .listen(
+          (TranscriptionProgress p) => add(_LyricsGenerationProgress(p)),
+          onError: (Object error) =>
+              add(_LyricsGenerationFailed(error.toString())),
+          onDone: () {
+            final Lyrics? partial = stateData.lyrics;
+            if (partial != null && partial.synced) {
+              add(_LyricsGenerationDone(partial));
+            }
+          },
+          cancelOnError: true,
+        );
   }
 
   /// Interactive generation's results all arrive asynchronously, well after
@@ -296,7 +291,9 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     emit(stateData);
 
     try {
-      final List<OnlineLyricsCandidate> results = await _onlineLyrics.search(song);
+      final List<OnlineLyricsCandidate> results = await _onlineLyrics.search(
+        song,
+      );
       stateData
         ..onlineSearching = false
         ..onlineCandidates = results

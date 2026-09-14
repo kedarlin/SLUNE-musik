@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../app_constants/playlist_constants.dart';
+import '../../core/app_constants/playlist_constants.dart';
 
 class PlaylistThumbnail extends StatelessWidget {
   const PlaylistThumbnail({
@@ -55,9 +55,7 @@ class PlaylistThumbnail extends StatelessWidget {
               height: tileSize * 0.30,
               decoration: BoxDecoration(
                 color: background.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(6.r),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(6.r)),
               ),
             ),
           ),

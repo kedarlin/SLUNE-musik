@@ -8,13 +8,13 @@ import 'package:go_router/go_router.dart';
 import 'package:marquee/marquee.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+import '../bloc/lyrics/lyrics_bloc.dart';
+import '../bloc/music_controller/music_controller_bloc.dart';
+import '../bloc/songs/songs_bloc.dart';
 import '../core/app_constants/app_enums.dart';
-import '../core/bloc/lyrics_bloc/lyrics_bloc.dart';
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/player_options_sheet.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_slider_theme.dart';
+import '../widgets/player/player_options_sheet.dart';
 import 'equalizer_sheet.dart';
 import 'lyrics_view.dart';
 import 'playing_queue_sheet.dart';
@@ -112,7 +112,9 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                         ),
                       ),
                       SliderTheme(
-                        data: appSliderTheme(inactiveColor: AppColors.textTertiary),
+                        data: appSliderTheme(
+                          inactiveColor: AppColors.textTertiary,
+                        ),
                         child: Slider(
                           min: 0.5,
                           max: 2.0,
@@ -133,7 +135,9 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                         ),
                       ),
                       SliderTheme(
-                        data: appSliderTheme(inactiveColor: AppColors.textTertiary),
+                        data: appSliderTheme(
+                          inactiveColor: AppColors.textTertiary,
+                        ),
                         child: Slider(
                           min: 0.5,
                           max: 2.0,

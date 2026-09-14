@@ -1,8 +1,8 @@
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../bloc/songs_bloc/songs_bloc.dart';
-import '../services/lyrics_repository.dart';
-import '../services/songs_channel.dart';
+import '../../bloc/songs/songs_bloc.dart';
+import '../../service/lyrics_repository.dart';
+import '../../service/songs_channel.dart';
 
 /// Renames [song]'s underlying audio file via MediaStore (title + display
 /// name), remaps any saved lyrics to the new content key - lyrics are keyed

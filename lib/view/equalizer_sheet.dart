@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/app_constants/app_enums.dart';
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/common_widgets.dart/sheet_shell.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_slider_theme.dart';
 import '../service/player_client.dart';
+import '../widgets/common/sheet_shell.dart';
 
 class EqualizerSheet extends StatefulWidget {
   const EqualizerSheet({required this.musicBloc, super.key});
@@ -73,6 +73,8 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bool eqAvailable = _caps?.eqAvailable ?? false;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceHigh,
@@ -87,6 +89,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
               ),
             )
           : SheetShell(
+              showDivider: false,
               header: Padding(
                 padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 8.h),
                 child: Center(
@@ -100,32 +103,72 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                   ),
                 ),
               ),
-              body: SingleChildScrollView(
+              body: Padding(
                 padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    _buildEqSection(),
-                    SizedBox(height: 24.h),
-                    _buildReverbRow(),
-                    SizedBox(height: 20.h),
-                    _buildStrengthRow(
-                      label: 'Bass Boost',
-                      available: _caps?.bassBoostAvailable ?? false,
-                      value: _bassBoost,
-                      onChanged: (int v) => setState(() => _bassBoost = v),
-                      onChangeEnd: (int v) =>
-                          widget.musicBloc.add(BassBoostChanged(v)),
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          'Equalizer',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _eqEnabled ? 'On' : 'Off',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14.sp,
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Switch(
+                          padding: EdgeInsets.zero,
+                          value: _eqEnabled && eqAvailable,
+                          onChanged: eqAvailable
+                              ? (bool v) {
+                                  setState(() => _eqEnabled = v);
+                                  widget.musicBloc.add(EqEnabledChanged(v));
+                                }
+                              : null,
+                          activeThumbColor: AppColors.accent,
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 16.h),
-                    _buildStrengthRow(
-                      label: 'Virtualizer',
-                      available: _caps?.virtualizerAvailable ?? false,
-                      value: _virtualizer,
-                      onChanged: (int v) => setState(() => _virtualizer = v),
-                      onChangeEnd: (int v) =>
-                          widget.musicBloc.add(VirtualizerChanged(v)),
+                    Expanded(
+                      child: ListView(
+                        children: <Widget>[
+                          _buildEqSection(),
+                          SizedBox(height: 16.h),
+                          _buildReverbRow(),
+                          SizedBox(height: 20.h),
+                          _buildStrengthRow(
+                            label: 'Bass Boost',
+                            available: _caps?.bassBoostAvailable ?? false,
+                            value: _bassBoost,
+                            onChanged: (int v) =>
+                                setState(() => _bassBoost = v),
+                            onChangeEnd: (int v) =>
+                                widget.musicBloc.add(BassBoostChanged(v)),
+                          ),
+                          SizedBox(height: 16.h),
+                          _buildStrengthRow(
+                            label: 'Virtualizer',
+                            available: _caps?.virtualizerAvailable ?? false,
+                            value: _virtualizer,
+                            onChanged: (int v) =>
+                                setState(() => _virtualizer = v),
+                            onChangeEnd: (int v) =>
+                                widget.musicBloc.add(VirtualizerChanged(v)),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -140,34 +183,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Text(
-              'Equalizer',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              _eqEnabled ? 'On' : 'Off',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
-            ),
-            SizedBox(width: 8.w),
-            Switch(
-              value: _eqEnabled && eqAvailable,
-              onChanged: eqAvailable
-                  ? (bool v) {
-                      setState(() => _eqEnabled = v);
-                      widget.musicBloc.add(EqEnabledChanged(v));
-                    }
-                  : null,
-              activeThumbColor: AppColors.accent,
-            ),
-          ],
-        ),
         if (!eqAvailable)
           Padding(
             padding: EdgeInsets.only(top: 8.h),
@@ -234,8 +249,9 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
               onTap: () async {
                 // Apply natively here - the call returns the resolved curve
                 // so the sliders can follow it - then let the bloc persist it.
-                final List<int> curve =
-                    await PlayerClient.instance.setEqPreset(i);
+                final List<int> curve = await PlayerClient.instance.setEqPreset(
+                  i,
+                );
                 if (!mounted) {
                   return;
                 }
@@ -265,13 +281,17 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
         selected: selected,
         onSelected: (_) => onTap(),
         showCheckmark: false,
-        selectedColor: AppColors.accent,
-        backgroundColor: AppColors.surface,
+        selectedColor: AppColors.transparent,
+        backgroundColor: AppColors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16.r)),
+        ),
         side: BorderSide(
-          color: selected ? AppColors.accent : AppColors.divider,
+          width: 0.5.w,
+          color: selected ? AppColors.accent : AppColors.white,
         ),
         labelStyle: TextStyle(
-          color: selected ? AppColors.background : AppColors.textPrimary,
+          color: selected ? AppColors.accent : AppColors.textPrimary,
           fontSize: 13.sp,
         ),
       ),
@@ -305,7 +325,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                   child: RotatedBox(
                     quarterTurns: 3,
                     child: SliderTheme(
-                      data: appSliderTheme(inactiveColor: AppColors.divider),
+                      data: appSliderTheme(),
                       child: Slider(
                         min: minMb,
                         max: maxMb,
@@ -402,10 +422,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
             children: <Widget>[
               Text(
                 available ? _reverb.label : 'Unavailable',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15.sp,
-                ),
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 15.sp),
               ),
               Icon(
                 Icons.arrow_drop_down_rounded,
@@ -458,10 +475,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
           child: Text(
             '${(value / 10).round()}%',
             textAlign: TextAlign.end,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 13.sp,
-            ),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
           ),
         ),
       ],

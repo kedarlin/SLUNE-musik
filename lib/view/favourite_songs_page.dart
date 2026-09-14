@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../core/bloc/songs_bloc/songs_bloc.dart';
-import '../core/common_widgets.dart/loader_widget.dart';
-import '../core/common_widgets.dart/song_options_sheet.dart';
-import '../core/common_widgets.dart/song_tile.dart';
+import '../bloc/songs/songs_bloc.dart';
+import '../widgets/common/loader_widget.dart';
+import '../widgets/songs/song_options_sheet.dart';
+import '../widgets/songs/song_tile.dart';
 
 class FavouriteSongsPage extends StatefulWidget {
   const FavouriteSongsPage({super.key});

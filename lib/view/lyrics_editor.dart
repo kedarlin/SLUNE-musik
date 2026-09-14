@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../core/bloc/lyrics_bloc/lyrics_bloc.dart';
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/models/lyrics.dart';
+import '../bloc/lyrics/lyrics_bloc.dart';
+import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
+import '../models/lyrics.dart';
 
 /// Line-by-line lyric editor.
 ///
@@ -106,9 +106,7 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
           maxLines: 10,
           minLines: 5,
           style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp),
-          decoration: const InputDecoration(
-            hintText: 'One line per row…',
-          ),
+          decoration: const InputDecoration(hintText: 'One line per row…'),
         ),
         actions: <Widget>[
           TextButton(
@@ -144,7 +142,10 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
     if (_timed) {
       final List<LyricLine> lines = _lines
           .where((_EditableLine l) => l.controller.text.trim().isNotEmpty)
-          .map((_EditableLine l) => LyricLine(time: l.time, text: l.controller.text.trim()))
+          .map(
+            (_EditableLine l) =>
+                LyricLine(time: l.time, text: l.controller.text.trim()),
+          )
           .toList();
       if (lines.isEmpty) {
         Navigator.of(context).pop();
@@ -207,9 +208,7 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
               ],
             ),
           ),
-          Expanded(
-            child: _timed ? _buildTimedList() : _buildPlain(),
-          ),
+          Expanded(child: _timed ? _buildTimedList() : _buildPlain()),
         ],
       ),
       floatingActionButton: _timed
@@ -261,13 +260,9 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
           child: Row(
             children: <Widget>[
               GestureDetector(
-                onTap: () =>
-                    setState(() => line.time = _playbackPosition),
+                onTap: () => setState(() => line.time = _playbackPosition),
                 child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 8.w,
-                    vertical: 6.h,
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(6.r),

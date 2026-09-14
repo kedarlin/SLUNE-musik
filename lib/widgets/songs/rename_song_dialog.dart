@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../bloc/songs_bloc/songs_bloc.dart';
-import '../theme/app_colors.dart';
-import '../utils/rename_song.dart';
+import '../../bloc/songs/songs_bloc.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/utils/rename_song.dart';
 
 /// The "Rename to" dialog - title, a single text field with an inline clear
 /// button, Cancel/OK, matching the reference the rename option follows.
@@ -105,7 +105,10 @@ class RenameSongDialog {
                     SizedBox(height: 8.h),
                     Text(
                       error!,
-                      style: TextStyle(color: Colors.redAccent, fontSize: 12.sp),
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12.sp,
+                      ),
                     ),
                   ],
                 ],

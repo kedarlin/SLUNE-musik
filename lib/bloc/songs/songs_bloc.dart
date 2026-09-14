@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../../app_constants/app_enums.dart';
+import '../../core/app_constants/app_enums.dart';
 
 part 'songs_event.dart';
 part 'songs_state.dart';
@@ -35,8 +35,8 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
         _settingsBox.get('sortField', defaultValue: SongSortField.date.index)
             as int;
 
-    stateData.sortField =
-        SongSortField.values[fieldIndex.clamp(0, SongSortField.values.length - 1)];
+    stateData.sortField = SongSortField
+        .values[fieldIndex.clamp(0, SongSortField.values.length - 1)];
 
     stateData.sortAscending =
         _settingsBox.get('sortAscending', defaultValue: false) as bool;

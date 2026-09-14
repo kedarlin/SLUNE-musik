@@ -3,12 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../bloc/playlists_bloc/playlists_bloc.dart';
-import '../models/playlist_model.dart';
-import '../theme/app_colors.dart';
+import '../../bloc/playlists/playlists_bloc.dart';
+import '../../core/theme/app_colors.dart';
+import '../../models/playlist_model.dart';
+import '../common/sheet_shell.dart';
 import 'create_playlist_sheet.dart';
 import 'playlist_thumbnail.dart';
-import 'sheet_shell.dart';
 
 class PlaylistPicker {
   static void show(

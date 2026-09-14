@@ -156,7 +156,7 @@ action.
 - **Source: LRCLIB** (`lrclib.net`) - free, open, no API key. It's the only
   free lyrics database with synced (LRC-timed) results; Musixmatch is
   commercial/gated and Genius has no timestamps.
-- **`OnlineLyricsService`** (`lib/core/services/online_lyrics_service.dart`,
+- **`OnlineLyricsService`** (`lib/service/online_lyrics_service.dart`,
   using `dio`) calls `GET /api/search?track_name=...&artist_name=...` and
   returns every candidate LRCLIB has - it never auto-picks a "best match".
   Only the song's own title/artist go out; no device identifiers, no

@@ -5,9 +5,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'core/services/lyrics_repository.dart';
 import 'core/theme/theme.dart';
 import 'go_router_int.dart';
+import 'service/lyrics_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

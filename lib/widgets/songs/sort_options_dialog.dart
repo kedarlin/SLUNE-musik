@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../app_constants/app_enums.dart';
-import '../theme/app_colors.dart';
+import '../../core/app_constants/app_enums.dart';
+import '../../core/theme/app_colors.dart';
 
 class SortOptionsResult {
   const SortOptionsResult({

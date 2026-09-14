@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../bloc/playlists_bloc/playlists_bloc.dart';
-import '../bloc/songs_bloc/songs_bloc.dart';
-import '../theme/app_colors.dart';
-import 'playlist_picker.dart';
+import '../../bloc/music_controller/music_controller_bloc.dart';
+import '../../bloc/playlists/playlists_bloc.dart';
+import '../../bloc/songs/songs_bloc.dart';
+import '../../core/theme/app_colors.dart';
+import '../common/sheet_action.dart';
+import '../common/sheet_shell.dart';
+import '../playlists/playlist_picker.dart';
 import 'rename_song_dialog.dart';
-import 'sheet_action.dart';
-import 'sheet_shell.dart';
 import 'song_sheet_header.dart';
 
 class SongOptionsSheet {

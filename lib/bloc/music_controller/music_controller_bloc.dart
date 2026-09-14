@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../../../service/player_client.dart';
-import '../../app_constants/app_enums.dart';
-import '../songs_bloc/songs_bloc.dart';
+import '../../core/app_constants/app_enums.dart';
+import '../../service/player_client.dart';
+import '../songs/songs_bloc.dart';
 
 part 'music_controller_event.dart';
 part 'music_controller_state.dart';
@@ -80,18 +80,19 @@ class MusicControllerBloc
   /// Speed / pitch / equalizer / reverb are all sticky across sessions and
   /// across tracks - the user dials in a sound once and it stays.
   void _restoreAudioFxPreferences() {
-    stateData.speed =
-        (_settingsBox.get('fxSpeed', defaultValue: 1.0) as num).toDouble();
-    stateData.pitch =
-        (_settingsBox.get('fxPitch', defaultValue: 1.0) as num).toDouble();
+    stateData.speed = (_settingsBox.get('fxSpeed', defaultValue: 1.0) as num)
+        .toDouble();
+    stateData.pitch = (_settingsBox.get('fxPitch', defaultValue: 1.0) as num)
+        .toDouble();
 
     stateData.eqEnabled =
         _settingsBox.get('fxEqEnabled', defaultValue: false) as bool;
-    stateData.eqPreset = _settingsBox.get('fxEqPreset', defaultValue: -1) as int;
-    stateData.eqBands = (_settingsBox.get('fxEqBands', defaultValue: <int>[])
-            as List<dynamic>)
-        .map((dynamic e) => e as int)
-        .toList();
+    stateData.eqPreset =
+        _settingsBox.get('fxEqPreset', defaultValue: -1) as int;
+    stateData.eqBands =
+        (_settingsBox.get('fxEqBands', defaultValue: <int>[]) as List<dynamic>)
+            .map((dynamic e) => e as int)
+            .toList();
     stateData.customEqBands =
         (_settingsBox.get('fxCustomEqBands', defaultValue: <int>[])
                 as List<dynamic>)
@@ -171,7 +172,8 @@ class MusicControllerBloc
     _sessionRestored = true;
 
     final List<dynamic> savedIds =
-        _settingsBox.get('lastQueueIds', defaultValue: <int>[]) as List<dynamic>;
+        _settingsBox.get('lastQueueIds', defaultValue: <int>[])
+            as List<dynamic>;
     if (savedIds.isEmpty) {
       return;
     }
@@ -185,8 +187,11 @@ class MusicControllerBloc
       return;
     }
 
-    final int savedIndex = (_settingsBox.get('lastIndex', defaultValue: 0) as int)
-        .clamp(0, restored.length - 1);
+    final int savedIndex =
+        (_settingsBox.get('lastIndex', defaultValue: 0) as int).clamp(
+          0,
+          restored.length - 1,
+        );
     final int savedPosition =
         _settingsBox.get('lastPositionMs', defaultValue: 0) as int;
 
@@ -440,7 +445,11 @@ class MusicControllerBloc
   ) async {
     if (stateData.eqBands.length != event.bandCount) {
       final List<int> sized = List<int>.filled(event.bandCount, 0);
-      for (int i = 0; i < event.bandCount && i < stateData.eqBands.length; i++) {
+      for (
+        int i = 0;
+        i < event.bandCount && i < stateData.eqBands.length;
+        i++
+      ) {
         sized[i] = stateData.eqBands[i];
       }
       stateData.eqBands = sized;
@@ -579,7 +588,9 @@ class MusicControllerBloc
     Emitter<MusicControllerState> emit,
   ) async {
     if (stateData.queue.isEmpty) {
-      add(InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]));
+      add(
+        InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]),
+      );
       return;
     }
 
@@ -597,7 +608,9 @@ class MusicControllerBloc
     Emitter<MusicControllerState> emit,
   ) async {
     if (stateData.queue.isEmpty) {
-      add(InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]));
+      add(
+        InitAudio(song: event.song, index: 0, queue: <SongModel>[event.song]),
+      );
       return;
     }
 

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-import '../bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../theme/app_colors.dart';
-import '../utils/utils.dart';
+import '../../bloc/music_controller/music_controller_bloc.dart';
+import '../../core/theme/app_colors.dart';
+import '../../core/utils/utils.dart';
 
 class SongTile extends StatelessWidget {
   const SongTile({

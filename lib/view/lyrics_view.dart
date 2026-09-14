@@ -5,13 +5,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../core/bloc/lyrics_bloc/lyrics_bloc.dart';
-import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
-import '../core/common_widgets.dart/sheet_shell.dart';
-import '../core/models/lyrics.dart';
-import '../core/models/online_lyrics_candidate.dart';
-import '../core/services/lyrics_repository.dart';
+import '../bloc/lyrics/lyrics_bloc.dart';
+import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
+import '../models/lyrics.dart';
+import '../models/online_lyrics_candidate.dart';
+import '../service/lyrics_repository.dart';
+import '../widgets/common/sheet_shell.dart';
 import 'lyrics_editor.dart';
 
 /// The panel shown in place of the turntable disc. Line-synced when timed
@@ -336,7 +336,9 @@ class _LyricsViewState extends State<LyricsView> {
             ],
           ),
         ),
-        Expanded(child: _fadeEdges(child: _buildLineList(data, interactive: false))),
+        Expanded(
+          child: _fadeEdges(child: _buildLineList(data, interactive: false)),
+        ),
       ],
     );
   }
@@ -571,9 +573,8 @@ class _OnlineLyricsSheet extends StatelessWidget {
                       if (!data.onlineSearching)
                         IconButton(
                           visualDensity: VisualDensity.compact,
-                          onPressed: () => lyricsBloc.add(
-                            LyricsOnlineSearchRequested(),
-                          ),
+                          onPressed: () =>
+                              lyricsBloc.add(LyricsOnlineSearchRequested()),
                           icon: Icon(
                             Icons.refresh_rounded,
                             size: 20.sp,
@@ -636,7 +637,8 @@ class _OnlineLyricsSheet extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
       itemCount: candidates.length,
-      separatorBuilder: (_, _) => Divider(height: 1.h, color: AppColors.divider),
+      separatorBuilder: (_, _) =>
+          Divider(height: 1.h, color: AppColors.divider),
       itemBuilder: (BuildContext context, int index) {
         final OnlineLyricsCandidate candidate = candidates[index];
         final String subtitle = <String>[
@@ -675,8 +677,9 @@ class _OnlineLyricsSheet extends StatelessWidget {
           trailing: Container(
             padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
             decoration: BoxDecoration(
-              color: (candidate.hasSynced ? AppColors.accent : AppColors.divider)
-                  .withValues(alpha: candidate.hasSynced ? 0.16 : 0.6),
+              color:
+                  (candidate.hasSynced ? AppColors.accent : AppColors.divider)
+                      .withValues(alpha: candidate.hasSynced ? 0.16 : 0.6),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
