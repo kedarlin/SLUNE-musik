@@ -79,28 +79,31 @@ class _PlaylistsPageState extends State<PlaylistsPage>
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       builder: (BuildContext sheetContext) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SizedBox(height: 8.h),
-            SheetAction(
-              icon: Icons.drive_file_rename_outline_rounded,
-              label: 'Rename',
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _renamePlaylist(playlist);
-              },
-            ),
-            SheetAction(
-              icon: Icons.delete_outline_rounded,
-              label: 'Delete',
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _playlistsBloc.add(DeletePlaylist(playlist.id));
-              },
-            ),
-            SizedBox(height: 8.h),
-          ],
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: 0.5.sh),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox(height: 8.h),
+              SheetAction(
+                icon: Icons.drive_file_rename_outline_rounded,
+                label: 'Rename',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _renamePlaylist(playlist);
+                },
+              ),
+              SheetAction(
+                icon: Icons.delete_outline_rounded,
+                label: 'Delete',
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _playlistsBloc.add(DeletePlaylist(playlist.id));
+                },
+              ),
+              SizedBox(height: 8.h),
+            ],
+          ),
         );
       },
     );
@@ -227,7 +230,9 @@ class _PlaylistsPageState extends State<PlaylistsPage>
         Expanded(
           child: BlocBuilder<PlaylistsBloc, PlaylistsState>(
             builder: (BuildContext context, PlaylistsState state) {
-              final List<Playlist> playlists = _playlistsBloc.stateData.playlists
+              final List<Playlist> playlists = _playlistsBloc
+                  .stateData
+                  .playlists
                   .where((Playlist p) => _matchesQuery(p.name))
                   .toList();
 

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/bloc/lyrics_bloc/lyrics_bloc.dart';
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
+import '../core/common_widgets.dart/sheet_shell.dart';
 import '../core/models/lyrics.dart';
 import '../core/models/online_lyrics_candidate.dart';
 import '../core/services/lyrics_repository.dart';
@@ -536,13 +537,12 @@ class _OnlineLyricsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: FractionallySizedBox(
-        heightFactor: 0.75,
-        child: BlocBuilder<LyricsBloc, LyricsState>(
-          bloc: lyricsBloc,
-          builder: (BuildContext context, LyricsState state) {
-            final LyricsStateData data = lyricsBloc.stateData;
-            return Column(
+      child: BlocBuilder<LyricsBloc, LyricsState>(
+        bloc: lyricsBloc,
+        builder: (BuildContext context, LyricsState state) {
+          final LyricsStateData data = lyricsBloc.stateData;
+          return SheetShell(
+            header: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 SizedBox(height: 10.h),
@@ -583,11 +583,11 @@ class _OnlineLyricsSheet extends StatelessWidget {
                     ],
                   ),
                 ),
-                Expanded(child: _buildBody(data)),
               ],
-            );
-          },
-        ),
+            ),
+            body: _buildBody(data),
+          );
+        },
       ),
     );
   }

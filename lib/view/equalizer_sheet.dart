@@ -3,7 +3,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../core/app_constants/app_enums.dart';
 import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
+import '../core/common_widgets.dart/sheet_shell.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_slider_theme.dart';
 import '../service/player_client.dart';
 
 class EqualizerSheet extends StatefulWidget {
@@ -76,51 +78,57 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
         color: AppColors.surfaceHigh,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
-      constraints: BoxConstraints(maxHeight: 0.78.sh),
-      padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 24.h),
       child: _loading
-          ? SizedBox(
-              height: 200.h,
-              child: const Center(child: CircularProgressIndicator()),
+          ? Padding(
+              padding: EdgeInsets.all(20.h),
+              child: SizedBox(
+                height: 200.h,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
             )
-          : SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Center(
-                    child: Container(
-                      width: 36.w,
-                      height: 4.h,
-                      margin: EdgeInsets.only(bottom: 16.h),
-                      decoration: BoxDecoration(
-                        color: AppColors.disabled,
-                        borderRadius: BorderRadius.circular(2.r),
-                      ),
+          : SheetShell(
+              header: Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 8.h),
+                child: Center(
+                  child: Container(
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: AppColors.disabled,
+                      borderRadius: BorderRadius.circular(2.r),
                     ),
                   ),
-                  _buildEqSection(),
-                  SizedBox(height: 24.h),
-                  _buildReverbRow(),
-                  SizedBox(height: 20.h),
-                  _buildStrengthRow(
-                    label: 'Bass Boost',
-                    available: _caps?.bassBoostAvailable ?? false,
-                    value: _bassBoost,
-                    onChanged: (int v) => setState(() => _bassBoost = v),
-                    onChangeEnd: (int v) =>
-                        widget.musicBloc.add(BassBoostChanged(v)),
-                  ),
-                  SizedBox(height: 16.h),
-                  _buildStrengthRow(
-                    label: 'Virtualizer',
-                    available: _caps?.virtualizerAvailable ?? false,
-                    value: _virtualizer,
-                    onChanged: (int v) => setState(() => _virtualizer = v),
-                    onChangeEnd: (int v) =>
-                        widget.musicBloc.add(VirtualizerChanged(v)),
-                  ),
-                ],
+                ),
+              ),
+              body: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    _buildEqSection(),
+                    SizedBox(height: 24.h),
+                    _buildReverbRow(),
+                    SizedBox(height: 20.h),
+                    _buildStrengthRow(
+                      label: 'Bass Boost',
+                      available: _caps?.bassBoostAvailable ?? false,
+                      value: _bassBoost,
+                      onChanged: (int v) => setState(() => _bassBoost = v),
+                      onChangeEnd: (int v) =>
+                          widget.musicBloc.add(BassBoostChanged(v)),
+                    ),
+                    SizedBox(height: 16.h),
+                    _buildStrengthRow(
+                      label: 'Virtualizer',
+                      available: _caps?.virtualizerAvailable ?? false,
+                      value: _virtualizer,
+                      onChanged: (int v) => setState(() => _virtualizer = v),
+                      onChangeEnd: (int v) =>
+                          widget.musicBloc.add(VirtualizerChanged(v)),
+                    ),
+                  ],
+                ),
               ),
             ),
     );
@@ -168,12 +176,25 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
             ),
           )
-        else ...<Widget>[
-          SizedBox(height: 14.h),
-          _buildPresetChips(),
-          SizedBox(height: 16.h),
-          _buildBands(),
-        ],
+        else
+          // Greyed out (not just disabled) while the equalizer is off, so
+          // it's visually obvious the presets/bands below aren't in effect.
+          IgnorePointer(
+            ignoring: !_eqEnabled,
+            child: AnimatedOpacity(
+              opacity: _eqEnabled ? 1.0 : 0.35,
+              duration: const Duration(milliseconds: 150),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(height: 14.h),
+                  _buildPresetChips(),
+                  SizedBox(height: 16.h),
+                  _buildBands(),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -185,13 +206,27 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: <Widget>[
-          _presetChip('Custom', selected: _eqPreset < 0, onTap: () {
-            setState(() => _eqPreset = -1);
-            // Re-push the current custom curve.
-            for (int b = 0; b < _bands.length; b++) {
-              widget.musicBloc.add(EqBandChanged(b, _bands[b]));
-            }
-          }),
+          _presetChip(
+            'Custom',
+            selected: _eqPreset < 0,
+            onTap: () {
+              // Restore what the user last dialed in by hand - not
+              // whatever preset's curve happens to still be sitting in
+              // `_bands` from the last preset tap (that was the bug:
+              // Custom -> Normal -> Custom lost the original curve because
+              // there was nowhere separate it was remembered).
+              final List<int> custom = _data.customEqBands.isNotEmpty
+                  ? List<int>.from(_data.customEqBands)
+                  : List<int>.from(_bands);
+              setState(() {
+                _eqPreset = -1;
+                _bands = custom;
+              });
+              for (int b = 0; b < custom.length; b++) {
+                widget.musicBloc.add(EqBandChanged(b, custom[b]));
+              }
+            },
+          ),
           for (int i = 0; i < presets.length; i++)
             _presetChip(
               presets[i],
@@ -270,11 +305,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                   child: RotatedBox(
                     quarterTurns: 3,
                     child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppColors.accent,
-                        inactiveTrackColor: AppColors.divider,
-                        thumbColor: AppColors.accent,
-                      ),
+                      data: appSliderTheme(inactiveColor: AppColors.divider),
                       child: Slider(
                         min: minMb,
                         max: maxMb,
@@ -411,11 +442,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
         ),
         Expanded(
           child: SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: AppColors.accent,
-              inactiveTrackColor: AppColors.divider,
-              thumbColor: AppColors.accent,
-            ),
+            data: appSliderTheme(inactiveColor: AppColors.divider),
             child: Slider(
               max: 1000,
               value: value.toDouble().clamp(0, 1000),

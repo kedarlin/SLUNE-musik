@@ -353,6 +353,10 @@ class _AllSongsPageState extends State<AllSongsPage>
                   thumbVisibility: false,
                   child: ListView.builder(
                     controller: _listScrollController,
+                    // SongTile is stateless - no per-item state to keep
+                    // alive, so skip the bookkeeping ListView otherwise
+                    // wraps every row in for that.
+                    addAutomaticKeepAlives: false,
                     itemCount: isSearching
                         ? _songsBloc.stateData.searchSongs.length
                         : _songsBloc.stateData.songs.length,
@@ -366,13 +370,20 @@ class _AllSongsPageState extends State<AllSongsPage>
 
                       // Playing a song always queues the full library so
                       // next/previous works - even when tapped from a filtered
-                      // search result. Fall back to the visible list if the
-                      // song somehow isn't in the library list.
+                      // search result. Not searching: displayList already IS
+                      // the full list, so `index` is already the answer - no
+                      // need to search for it (a per-tile indexWhere() over
+                      // the whole library here was an O(n) scan run once per
+                      // visible row, i.e. O(n^2) for a scroll through the
+                      // whole list - the actual cause of the reported lag on
+                      // large libraries, not the artwork or the scrollbar).
+                      // Fall back to the visible list if the song somehow
+                      // isn't in the library list.
                       final List<SongModel> fullList =
                           _songsBloc.stateData.songs;
-                      final int fullIndex = fullList.indexWhere(
-                        (SongModel s) => s.id == song.id,
-                      );
+                      final int fullIndex = isSearching
+                          ? fullList.indexWhere((SongModel s) => s.id == song.id)
+                          : index;
                       final List<SongModel> queue = fullIndex >= 0
                           ? fullList
                           : displayList;

@@ -72,96 +72,105 @@ class _CreatePlaylistSheetState extends State<CreatePlaylistSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(
-                  Icons.playlist_add_rounded,
-                  size: 24.sp,
-                  color: AppColors.textPrimary,
-                ),
-                SizedBox(width: 12.w),
-                Text(
-                  widget.title,
-                  style: TextStyle(
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: 0.5.sh),
+      // Scrollable, not just constrained: this content is normally short,
+      // but the keyboard's inset padding below can still push the total
+      // past the 0.5sh cap on a short/wide screen - scroll rather than
+      // overflow in that case.
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.playlist_add_rounded,
+                    size: 24.sp,
                     color: AppColors.textPrimary,
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w500,
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20.h),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    autofocus: true,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _submit(),
+                  SizedBox(width: 12.w),
+                  Text(
+                    widget.title,
                     style: TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 15.sp,
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    decoration: InputDecoration(
-                      hintText: 'Enter Playlist Name',
-                      hintStyle: TextStyle(
-                        color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+              SizedBox(height: 20.h),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _submit(),
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
                         fontSize: 15.sp,
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 14.w,
-                        vertical: 14.h,
+                      decoration: InputDecoration(
+                        hintText: 'Enter Playlist Name',
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15.sp,
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 14.h,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(
+                            color: AppColors.divider,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
+                          borderSide: const BorderSide(color: AppColors.accent),
+                        ),
                       ),
-                      enabledBorder: OutlineInputBorder(
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  TextButton(
+                    onPressed: _canCreate ? _submit : null,
+                    style: TextButton.styleFrom(
+                      backgroundColor: _canCreate
+                          ? AppColors.accent
+                          : AppColors.surface,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 16.h,
+                      ),
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.r),
-                        borderSide: const BorderSide(color: AppColors.divider),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                        borderSide: const BorderSide(color: AppColors.accent),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                TextButton(
-                  onPressed: _canCreate ? _submit : null,
-                  style: TextButton.styleFrom(
-                    backgroundColor: _canCreate
-                        ? AppColors.accent
-                        : AppColors.surface,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 16.h,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
+                    child: Text(
+                      widget.actionLabel,
+                      style: TextStyle(
+                        color: _canCreate
+                            ? AppColors.white
+                            : AppColors.textSecondary,
+                        fontSize: 15.sp,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    widget.actionLabel,
-                    style: TextStyle(
-                      color: _canCreate
-                          ? AppColors.white
-                          : AppColors.textSecondary,
-                      fontSize: 15.sp,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -14,6 +14,7 @@ import '../core/bloc/music_controller_bloc.dart/music_controller_bloc.dart';
 import '../core/bloc/songs_bloc/songs_bloc.dart';
 import '../core/common_widgets.dart/player_options_sheet.dart';
 import '../core/theme/app_colors.dart';
+import '../core/theme/app_slider_theme.dart';
 import 'equalizer_sheet.dart';
 import 'lyrics_view.dart';
 import 'playing_queue_sheet.dart';
@@ -94,58 +95,91 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
         return BlocBuilder<MusicControllerBloc, MusicControllerState>(
           bloc: _musicControllerBloc,
           builder: (BuildContext context, MusicControllerState state) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Speed  ${_musicControllerBloc.stateData.speed.toStringAsFixed(2)}x',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                  Slider(
-                    min: 0.5,
-                    max: 2.0,
-                    value: _musicControllerBloc.stateData.speed.clamp(0.5, 2.0),
-                    onChanged: (double value) =>
-                        _musicControllerBloc.add(SpeedChanged(value)),
-                  ),
-                  SizedBox(height: 12.h),
-                  Text(
-                    'Pitch  ${_musicControllerBloc.stateData.pitch.toStringAsFixed(2)}x',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                  Slider(
-                    min: 0.5,
-                    max: 2.0,
-                    value: _musicControllerBloc.stateData.pitch.clamp(0.5, 2.0),
-                    onChanged: (double value) =>
-                        _musicControllerBloc.add(PitchChanged(value)),
-                  ),
-                  SizedBox(height: 8.h),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        _musicControllerBloc.add(SpeedChanged(1.0));
-                        _musicControllerBloc.add(PitchChanged(1.0));
-                      },
-                      child: Text(
-                        'Reset',
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 0.5.sh),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Speed  ${_musicControllerBloc.stateData.speed.toStringAsFixed(2)}x',
                         style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 15.sp,
+                          color: AppColors.textPrimary,
+                          fontSize: 16.sp,
                         ),
                       ),
-                    ),
+                      SliderTheme(
+                        data: appSliderTheme(inactiveColor: AppColors.textTertiary),
+                        child: Slider(
+                          min: 0.5,
+                          max: 2.0,
+                          value: _musicControllerBloc.stateData.speed.clamp(
+                            0.5,
+                            2.0,
+                          ),
+                          onChanged: (double value) =>
+                              _musicControllerBloc.add(SpeedChanged(value)),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Text(
+                        'Pitch  ${_musicControllerBloc.stateData.pitch.toStringAsFixed(2)}x',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16.sp,
+                        ),
+                      ),
+                      SliderTheme(
+                        data: appSliderTheme(inactiveColor: AppColors.textTertiary),
+                        child: Slider(
+                          min: 0.5,
+                          max: 2.0,
+                          value: _musicControllerBloc.stateData.pitch.clamp(
+                            0.5,
+                            2.0,
+                          ),
+                          onChanged: (double value) =>
+                              _musicControllerBloc.add(PitchChanged(value)),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: <Widget>[
+                          TextButton(
+                            onPressed: () {
+                              _musicControllerBloc.add(SpeedChanged(0.90));
+                              _musicControllerBloc.add(PitchChanged(0.95));
+                            },
+                            child: Text(
+                              'Lo-Fi Preset',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontSize: 15.sp,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              _musicControllerBloc.add(SpeedChanged(1.0));
+                              _musicControllerBloc.add(PitchChanged(1.0));
+                            },
+                            child: Text(
+                              'Reset',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontSize: 15.sp,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },
@@ -389,8 +423,11 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             child: AnimatedBuilder(
               animation: _tonearmController,
               builder: (BuildContext context, Widget? child) {
+                // 0.360 rad used to leave the arm still visually resting on
+                // the disc edge in the "off" pose - lifted further out here
+                // so off clearly reads as off.
                 final double angle = lerpDouble(
-                  0.360,
+                  0.52,
                   0.0,
                   Curves.easeInOut.transform(_tonearmController.value),
                 )!;
@@ -508,16 +545,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             ),
           ),
           SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 2.w,
-              thumbShape: RoundSliderThumbShape(enabledThumbRadius: 7.r),
-              overlayShape: RoundSliderOverlayShape(overlayRadius: 14.r),
-            ),
+            data: appSliderTheme(),
             child: Slider(
               max: duration.toDouble().clamp(1, double.infinity),
               value: position.toDouble().clamp(0, duration.toDouble()),
-              activeColor: AppColors.accent,
-              inactiveColor: AppColors.textPrimary.withValues(alpha: 0.3),
               onChanged: (double value) =>
                   _musicControllerBloc.add(SeekTo(value.toInt())),
             ),

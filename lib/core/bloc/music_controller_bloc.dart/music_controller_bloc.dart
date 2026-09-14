@@ -92,6 +92,11 @@ class MusicControllerBloc
             as List<dynamic>)
         .map((dynamic e) => e as int)
         .toList();
+    stateData.customEqBands =
+        (_settingsBox.get('fxCustomEqBands', defaultValue: <int>[])
+                as List<dynamic>)
+            .map((dynamic e) => e as int)
+            .toList();
     stateData.bassBoost = _settingsBox.get('fxBass', defaultValue: 0) as int;
     stateData.virtualizer = _settingsBox.get('fxVirt', defaultValue: 0) as int;
 
@@ -494,9 +499,14 @@ class MusicControllerBloc
     }
     stateData.eqBands[event.band] = event.levelMb;
     stateData.eqPreset = -1; // custom
+    // Remembered separately from eqBands so a later named-preset selection
+    // (which overwrites eqBands) doesn't also erase what the user dialed in
+    // by hand - see customEqBands' doc comment.
+    stateData.customEqBands = List<int>.from(stateData.eqBands);
     await _player.setEqBand(event.band, event.levelMb);
     await _settingsBox.put('fxEqPreset', -1);
     await _settingsBox.put('fxEqBands', stateData.eqBands);
+    await _settingsBox.put('fxCustomEqBands', stateData.customEqBands);
     emit(stateData);
   }
 

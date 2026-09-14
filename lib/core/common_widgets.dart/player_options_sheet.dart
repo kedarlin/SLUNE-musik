@@ -10,6 +10,7 @@ import '../theme/app_colors.dart';
 import 'playlist_picker.dart';
 import 'rename_song_dialog.dart';
 import 'sheet_action.dart';
+import 'sheet_shell.dart';
 import 'song_sheet_header.dart';
 
 class PlayerOptionsSheet {
@@ -35,14 +36,12 @@ class PlayerOptionsSheet {
               topRight: Radius.circular(12.r),
             ),
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: 0.6.sh),
-            child: SingleChildScrollView(
+          child: SheetShell(
+            header: SongSheetHeader(song: song),
+            body: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  SongSheetHeader(song: song),
-                  Divider(color: AppColors.divider, height: 1.h),
                   SheetAction(
                     icon: Icons.playlist_add_rounded,
                     label: 'Add To Playlist',

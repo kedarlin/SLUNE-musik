@@ -18,6 +18,12 @@ class MusicControllerStateData extends MusicControllerState {
   bool eqEnabled = false;
   int eqPreset = -1; // -1 = custom
   List<int> eqBands = <int>[]; // millibels per band; length == caps.bandCount
+
+  /// The last curve the user actually dragged by hand, kept separate from
+  /// [eqBands] (which a named preset selection overwrites) so switching
+  /// Normal -> Custom restores what the user had, not whatever preset was
+  /// last applied over it.
+  List<int> customEqBands = <int>[];
   int bassBoost = 0; // 0..1000
   int virtualizer = 0; // 0..1000
   ReverbPreset reverbPreset = ReverbPreset.none;

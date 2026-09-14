@@ -153,7 +153,11 @@ class _QueueSheetBodyState extends State<_QueueSheetBody> {
                   ],
                 ),
               ),
-              Divider(color: AppColors.divider, height: 1.h),
+              Divider(
+                color: AppColors.textSecondary.withValues(alpha: 0.25),
+                height: 1.h,
+                thickness: 1,
+              ),
               if (queue.isEmpty)
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 40.h),
