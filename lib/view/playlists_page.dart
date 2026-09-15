@@ -36,7 +36,6 @@ class _PlaylistsPageState extends State<PlaylistsPage>
     super.initState();
     _playlistsBloc = BlocProvider.of<PlaylistsBloc>(context);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    // Not forced: no-ops if playlists are already loaded.
     _playlistsBloc.add(LoadPlaylists());
 
     _searchController.addListener(() {
@@ -149,7 +148,7 @@ class _PlaylistsPageState extends State<PlaylistsPage>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin
+    super.build(context);
     return Column(
       children: <Widget>[
         Padding(

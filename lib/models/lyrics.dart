@@ -1,12 +1,5 @@
-/// Where a [Lyrics] object came from. Stored with the lyrics so the UI can
-/// show provenance and so an AI draft can be told apart from a human-checked
-/// version. [online] is a result the user picked from the "Search Online"
-/// list (lrclib.net) - treated like [ai] in that it still needs a save to
-/// stick, since a metadata-matched lookup can occasionally be the wrong
-/// version of a song.
 enum LyricsSource { tag, lrc, ai, edited, online }
 
-/// One timed line of lyrics. [time] is the offset from the start of the track.
 class LyricLine {
   const LyricLine({required this.time, required this.text});
 
@@ -17,11 +10,6 @@ class LyricLine {
       LyricLine(time: time ?? this.time, text: text ?? this.text);
 }
 
-/// A resolved set of lyrics for a song.
-///
-/// When [synced] is true, [lines] carries per-line timing and the player can
-/// highlight/scroll. When false, only [plainText] is meaningful (a free-form
-/// dump with no timing) - still shown, just static.
 class Lyrics {
   Lyrics({
     required this.lines,
@@ -56,9 +44,6 @@ class Lyrics {
   final DateTime updatedAt;
   final String? plainText;
 
-  /// Same content, different provenance - used when the user approves an AI
-  /// draft (Save "graduates" it to [LyricsSource.edited] so it doesn't keep
-  /// nagging for review every time the song is opened again).
   Lyrics withSource(LyricsSource newSource) => Lyrics(
     lines: lines,
     source: newSource,
@@ -71,8 +56,6 @@ class Lyrics {
   bool get isEmpty =>
       lines.isEmpty && (plainText == null || plainText!.trim().isEmpty);
 
-  /// Index of the line that should be active at [position], or -1 if playback
-  /// is before the first line. Binary search - called on every tick.
   int activeIndexAt(Duration position) {
     if (lines.isEmpty) {
       return -1;
@@ -113,7 +96,8 @@ class Lyrics {
     );
     final DateTime updatedAt =
         DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now();
-    final List<dynamic> rawLines = json['lines'] as List<dynamic>? ?? <dynamic>[];
+    final List<dynamic> rawLines =
+        json['lines'] as List<dynamic>? ?? <dynamic>[];
     final List<LyricLine> lines = rawLines
         .map(
           (dynamic e) => LyricLine(

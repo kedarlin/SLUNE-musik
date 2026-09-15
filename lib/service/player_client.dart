@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
-/// Playback state pushed from PlayerChannel (Kotlin) on every player event
-/// and on a 200ms poll while a controller is connected.
 class PlayerState {
   const PlayerState({
     required this.position,
@@ -23,14 +21,6 @@ class PlayerState {
   final bool hasPrevious;
 }
 
-/// Thin wrapper over the muxic/player MethodChannel + EventChannel, talking
-/// to the Media3 MediaController connected to PlaybackService. Replaces
-/// lib/ffi/audio_engine.dart (the native Oboe engine's FFI binding).
-///
-/// Every command is fire-and-forget from the bloc's point of view: failures
-/// are swallowed here rather than thrown, matching the old FFI methods'
-/// non-throwing void/bool contract, so a missed platform call never leaves
-/// MusicControllerBloc's event handlers half-run.
 class PlayerClient {
   PlayerClient._();
 
@@ -61,12 +51,7 @@ class PlayerClient {
     try {
       await _method.invokeMethod(method, args);
     } on PlatformException {
-      // Swallowed by design - see class doc. The EventChannel stream is the
-      // source of truth for state; a dropped command just means the UI
-      // won't see the expected state change, rather than the bloc crashing.
-    } on MissingPluginException {
-      // Can happen very early during hot restart; same handling.
-    }
+    } on MissingPluginException {}
   }
 
   static Map<String, dynamic> songToQueueItem(SongModel song) {
@@ -98,8 +83,9 @@ class PlayerClient {
 
   Future<void> stop() => _invoke('stop');
 
-  Future<void> seekTo(Duration position) =>
-      _invoke('seekTo', <String, dynamic>{'positionMs': position.inMilliseconds});
+  Future<void> seekTo(Duration position) => _invoke('seekTo', <String, dynamic>{
+    'positionMs': position.inMilliseconds,
+  });
 
   Future<void> next() => _invoke('next');
 
@@ -117,8 +103,6 @@ class PlayerClient {
   Future<void> setShuffle(bool enabled) =>
       _invoke('setShuffle', <String, dynamic>{'enabled': enabled});
 
-  /// [mode] matches RepeatMode's enum index (off=0, one=1, all=2), which is
-  /// identical to Media3's own REPEAT_MODE_OFF/ONE/ALL constants.
   Future<void> setRepeat(int mode) =>
       _invoke('setRepeat', <String, dynamic>{'mode': mode});
 
@@ -128,11 +112,6 @@ class PlayerClient {
   Future<void> addLater(SongModel song) =>
       _invoke('addLater', <String, dynamic>{'item': songToQueueItem(song)});
 
-  /// Replaces the whole queue with [songs] while leaving the currently-playing
-  /// track (which must be at [currentIndex] in the new list) untouched, so it
-  /// keeps playing without restarting. Used for the shuffle toggle. Falls back
-  /// to a full [setQueue]-style reset natively if the current track isn't at
-  /// [currentIndex] in the new list.
   Future<void> reorderKeepingCurrent({
     required List<SongModel> songs,
     required int currentIndex,
@@ -151,18 +130,9 @@ class PlayerClient {
 
   Future<void> clearQueue() => _invoke('clearQueue');
 
-  // --- audiofx panel ----------------------------------------------------
-  //
-  // These are intentionally primitive: the native AudioEffectsController
-  // owns how each is realised (android.media.audiofx today, could change),
-  // so this contract never has to change.
-
   Future<void> setEqEnabled(bool enabled) =>
       _invoke('setEqEnabled', <String, dynamic>{'enabled': enabled});
 
-  /// Applies a device Equalizer preset (or -1 for custom) and returns the
-  /// resulting per-band curve in millibels, so the UI sliders can follow it.
-  /// Empty list if the query fails.
   Future<List<int>> setEqPreset(int preset) async {
     try {
       final dynamic raw = await _method.invokeMethod<dynamic>(
@@ -180,24 +150,18 @@ class PlayerClient {
     }
   }
 
-  /// [levelMb] is millibels (e.g. -1500..1500). Switches the EQ to "custom".
   Future<void> setEqBand(int band, int levelMb) =>
       _invoke('setEqBand', <String, dynamic>{'band': band, 'level': levelMb});
 
-  /// [strength] is 0..1000.
   Future<void> setBassBoost(int strength) =>
       _invoke('setBassBoost', <String, dynamic>{'strength': strength});
 
-  /// [strength] is 0..1000.
   Future<void> setVirtualizer(int strength) =>
       _invoke('setVirtualizer', <String, dynamic>{'strength': strength});
 
-  /// [preset] maps 1:1 onto PresetReverb PRESET_* constants (0..6).
   Future<void> setReverb(int preset) =>
       _invoke('setReverb', <String, dynamic>{'preset': preset});
 
-  /// What the current device's audio effect stack actually supports. Returns
-  /// null if the query fails or the player isn't connected yet.
   Future<AudioFxCaps?> getFxCaps() async {
     try {
       final dynamic raw = await _method.invokeMethod<dynamic>('getFxCaps');
@@ -213,8 +177,6 @@ class PlayerClient {
   }
 }
 
-/// Device audio-effect capabilities, queried from the native Equalizer /
-/// BassBoost / Virtualizer / PresetReverb once playback is live.
 class AudioFxCaps {
   const AudioFxCaps({
     required this.eqAvailable,

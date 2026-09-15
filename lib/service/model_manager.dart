@@ -3,22 +3,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// Locates the offline lyrics engine's model files.
-///
-/// Nothing is bundled in the APK. The files below are dropped manually today
-/// (or fetched from a cloud endpoint later) into the app's own external
-/// files directory - no runtime permission needed, and it's removed cleanly
-/// on uninstall:
-///
-/// ```
-/// Android/data/com.example.music/files/models/asr/distil-small.en-encoder.int8.onnx
-/// Android/data/com.example.music/files/models/asr/distil-small.en-decoder.int8.onnx
-/// Android/data/com.example.music/files/models/asr/distil-small.en-tokens.txt
-/// Android/data/com.example.music/files/models/vad/silero_vad.onnx
-/// ```
-///
-/// These are the standard sherpa-onnx release asset names for the
-/// distil-whisper `distil-small.en` int8 export and the Silero VAD model.
 class ModelManager {
   static const String asrSubdir = 'models/asr';
   static const String vadSubdir = 'models/vad';
@@ -50,7 +34,6 @@ class ModelManager {
   Future<String> vadModelPath() async =>
       p.join(await vadDirPath(), vadFileName);
 
-  /// True only when every required model file is present.
   Future<bool> isReady() async {
     final List<String> required = <String>[
       await encoderPath(),

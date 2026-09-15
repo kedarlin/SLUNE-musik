@@ -4,8 +4,7 @@ class BuiltInPlaylists {
   static const String favourites = '__favourites__';
   static const String recentlyPlayed = '__recently_played__';
 
-  static bool isBuiltIn(String id) =>
-      id == favourites || id == recentlyPlayed;
+  static bool isBuiltIn(String id) => id == favourites || id == recentlyPlayed;
 }
 
 class PlaylistColors {

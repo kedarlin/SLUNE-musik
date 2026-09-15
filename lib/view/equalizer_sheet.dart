@@ -21,7 +21,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
   AudioFxCaps? _caps;
   bool _loading = true;
 
-  // Local working copy - the sheet is the only editor while it's open.
   late bool _eqEnabled;
   late int _eqPreset;
   late List<int> _bands;
@@ -192,8 +191,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
             ),
           )
         else
-          // Greyed out (not just disabled) while the equalizer is off, so
-          // it's visually obvious the presets/bands below aren't in effect.
           IgnorePointer(
             ignoring: !_eqEnabled,
             child: AnimatedOpacity(
@@ -225,11 +222,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
             'Custom',
             selected: _eqPreset < 0,
             onTap: () {
-              // Restore what the user last dialed in by hand - not
-              // whatever preset's curve happens to still be sitting in
-              // `_bands` from the last preset tap (that was the bug:
-              // Custom -> Normal -> Custom lost the original curve because
-              // there was nowhere separate it was remembered).
               final List<int> custom = _data.customEqBands.isNotEmpty
                   ? List<int>.from(_data.customEqBands)
                   : List<int>.from(_bands);
@@ -247,8 +239,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
               presets[i],
               selected: _eqPreset == i,
               onTap: () async {
-                // Apply natively here - the call returns the resolved curve
-                // so the sliders can follow it - then let the bloc persist it.
                 final List<int> curve = await PlayerClient.instance.setEqPreset(
                   i,
                 );

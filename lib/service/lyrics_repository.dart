@@ -8,16 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import '../models/lyrics.dart';
 import 'lrc_codec.dart';
 
-/// Resolves and persists lyrics for a song.
-///
-/// Order of resolution in [load]:
-///   1. Hive box `lyrics` (AI / edited / previously imported), keyed by a
-///      content hash so it survives a MediaStore re-index.
-///   2. A `.lrc` file in the app's lyrics folder.
-///   3. A `.lrc` sidecar next to the audio file (best effort - may be blocked
-///      by scoped storage).
-///
-/// [save] writes both the Hive record and a `.lrc` mirror in the app folder.
 class LyricsRepository {
   LyricsRepository._();
 
@@ -30,7 +20,6 @@ class LyricsRepository {
 
   Directory? _lyricsDir;
 
-  /// `Android/data/<pkg>/files/lyrics/` - no runtime permission, browsable.
   Future<Directory> _dir() async {
     if (_lyricsDir != null) {
       return _lyricsDir!;
@@ -45,11 +34,12 @@ class LyricsRepository {
     return _lyricsDir = dir;
   }
 
-  /// Stable key for a song: independent of the MediaStore id. Defensive - some
-  /// MediaStore rows have null size/duration and `SongModel` getters throw on
-  /// those.
   static String contentKey(SongModel song) {
-    return _keyFor(size: _safeSize(song), duration: song.duration ?? 0, title: song.title);
+    return _keyFor(
+      size: _safeSize(song),
+      duration: song.duration ?? 0,
+      title: song.title,
+    );
   }
 
   static int _safeSize(SongModel song) {
@@ -67,9 +57,6 @@ class LyricsRepository {
   }) => _fnv1a('$size|$duration|${title.trim().toLowerCase()}');
 
   static String _fnv1a(String input) {
-    // 32-bit FNV-1a, rendered as hex. No crypto dependency - this is a cache
-    // key, not a security primitive, and 32 bits is plenty for a personal
-    // library's collision odds.
     int hash = 0x811c9dc5;
     const int prime = 0x01000193;
     for (final int codeUnit in input.codeUnits) {
@@ -113,10 +100,7 @@ class LyricsRepository {
       await file.writeAsString(
         LrcCodec.serialize(lyrics, title: song.title, artist: song.artist),
       );
-    } on FileSystemException {
-      // The Hive record is the source of truth; a failed .lrc mirror is
-      // non-fatal (e.g. no space).
-    }
+    } on FileSystemException {}
   }
 
   Future<void> delete(SongModel song) async {
@@ -127,16 +111,9 @@ class LyricsRepository {
       if (file.existsSync()) {
         await file.delete();
       }
-    } on FileSystemException {
-      // ignore
-    }
+    } on FileSystemException {}
   }
 
-  /// The content key is title-derived, so renaming a song orphans anything
-  /// saved under its old key. Called right after a successful rename (before
-  /// the on_audio_query re-fetch that would otherwise make [oldSong] itself
-  /// stale) - moves the Hive record and `.lrc` mirror across, if either
-  /// exists. A no-op if nothing was saved for [oldSong].
   Future<void> remapForRename(SongModel oldSong, String newTitle) async {
     final String oldKey = contentKey(oldSong);
     final String newKey = _keyFor(
@@ -160,16 +137,11 @@ class LyricsRepository {
       if (oldFile.existsSync()) {
         await oldFile.rename(p.join(dir.path, '$newKey.lrc'));
       }
-    } on FileSystemException {
-      // Best effort - the Hive record above is the source of truth.
-    }
+    } on FileSystemException {}
   }
 
   Future<bool> has(SongModel song) async => (await load(song)) != null;
 
-  /// Writes a nicely-named copy of [lyrics] into the temp dir for sharing -
-  /// the permanent mirror in [_dir] is content-key named, not something a
-  /// recipient would want to see. Returns the file path.
   Future<String> exportForShare(SongModel song, Lyrics lyrics) async {
     final Directory tempDir = await getTemporaryDirectory();
     final String sanitized = song.title
@@ -211,9 +183,7 @@ class LyricsRepository {
           return found;
         }
       }
-    } on FileSystemException {
-      // Scoped storage often blocks this - not an error.
-    }
+    } on FileSystemException {}
     return null;
   }
 }

@@ -22,9 +22,6 @@ class PitchChanged extends MusicControllerEvent {
   final double pitch;
 }
 
-/// Wraps a PlayerState pushed from PlayerClient's native EventChannel
-/// stream - position/duration/isPlaying/currentIndex are all authoritative
-/// from Media3, not computed here.
 class PlayerStateReceived extends MusicControllerEvent {
   PlayerStateReceived(this.state);
   final PlayerState state;
@@ -50,8 +47,8 @@ class EqEnabledChanged extends MusicControllerEvent {
 
 class EqPresetSelected extends MusicControllerEvent {
   EqPresetSelected(this.preset, this.bandLevelsMb);
-  final int preset; // -1 = custom
-  final List<int> bandLevelsMb; // curve the native EQ resolved for this preset
+  final int preset;
+  final List<int> bandLevelsMb;
 }
 
 class EqBandChanged extends MusicControllerEvent {
@@ -61,12 +58,12 @@ class EqBandChanged extends MusicControllerEvent {
 }
 
 class BassBoostChanged extends MusicControllerEvent {
-  BassBoostChanged(this.strength); // 0..1000
+  BassBoostChanged(this.strength);
   final int strength;
 }
 
 class VirtualizerChanged extends MusicControllerEvent {
-  VirtualizerChanged(this.strength); // 0..1000
+  VirtualizerChanged(this.strength);
   final int strength;
 }
 
@@ -75,8 +72,6 @@ class ReverbPresetChanged extends MusicControllerEvent {
   final ReverbPreset preset;
 }
 
-/// Dispatched by the equalizer sheet once it has queried device caps, so the
-/// bloc can size `eqBands` and re-push any persisted custom curve.
 class EqBandsInitialized extends MusicControllerEvent {
   EqBandsInitialized(this.bandCount);
   final int bandCount;
@@ -115,10 +110,8 @@ class JumpToQueueIndex extends MusicControllerEvent {
   final int index;
 }
 
-/// Marks the current playback position as the A-B loop's start point.
 class SetAbLoopPointA extends MusicControllerEvent {}
 
-/// Marks the current playback position as the A-B loop's end point.
 class SetAbLoopPointB extends MusicControllerEvent {}
 
 class ClearAbLoop extends MusicControllerEvent {}
@@ -128,10 +121,6 @@ class SetSleepTimer extends MusicControllerEvent {
   final Duration? duration;
 }
 
-/// Internal-only: dispatched by the sleep timer's own Timer callback, since
-/// bloc event handlers cannot emit() from outside an event handler.
 class _SleepTimerFired extends MusicControllerEvent {}
 
-/// Internal-only: dispatched once the song library is available, to restore
-/// the queue / current track / position the user left the app on (paused).
 class _RestoreLastSession extends MusicControllerEvent {}

@@ -13,15 +13,6 @@ import 'model_manager.dart';
 import 'native_lyrics_bridge.dart';
 import 'transcription_service.dart';
 
-/// On-device lyrics transcription: VAD (Silero, via sherpa-onnx) splits the
-/// decoded audio into speech-shaped segments, each is fed to an offline
-/// Whisper (distil-small.en) recognizer independently. A VAD segment's start
-/// time becomes the line's timestamp - this is what gives line-level sync
-/// without needing word/segment timestamps out of Whisper itself.
-///
-/// Pipeline: native MediaCodec decode (file -> 16 kHz mono WAV) -> spawn a
-/// Dart isolate (VAD + Whisper both run through FFI, off the UI thread) ->
-/// stream lines back as they're produced.
 class SherpaTranscriptionService implements TranscriptionService {
   SherpaTranscriptionService({ModelManager? models, NativeLyricsBridge? bridge})
     : _models = models ?? ModelManager(),
@@ -54,11 +45,6 @@ class SherpaTranscriptionService implements TranscriptionService {
       receivePort = null;
       final String? wavPath = tempWavPath;
       if (wavPath != null) {
-        // Interrupts the native MediaCodec/MediaExtractor loop if a decode
-        // for this job is still running - otherwise switching songs mid
-        // "Decoding audio…" let that decode burn CPU/battery to completion
-        // for a result nobody was going to use. Harmless no-op if decoding
-        // already finished (or never started).
         await _bridge.cancelDecode(wavPath);
       }
       await _bridge.stopForegroundService();
@@ -68,15 +54,15 @@ class SherpaTranscriptionService implements TranscriptionService {
           if (file.existsSync()) {
             file.deleteSync();
           }
-        } on FileSystemException {
-          // Best effort - a stray temp file is not worth failing over.
-        }
+        } on FileSystemException {}
       }
     }
 
     Future<void> run() async {
       try {
-        await _bridge.startForegroundService('Generating lyrics — ${song.title}');
+        await _bridge.startForegroundService(
+          'Generating lyrics — ${song.title}',
+        );
         controller.add(
           const TranscriptionProgress(fraction: null, phase: 'Decoding audio…'),
         );
@@ -96,14 +82,15 @@ class SherpaTranscriptionService implements TranscriptionService {
 
         final ReceivePort port = ReceivePort();
         receivePort = port;
-        isolate = await Isolate.spawn(_transcribeIsolateEntry, <String, dynamic>{
-          'sendPort': port.sendPort,
-          'wavPath': wavPath,
-          'encoderPath': await _models.encoderPath(),
-          'decoderPath': await _models.decoderPath(),
-          'tokensPath': await _models.tokensPath(),
-          'vadModelPath': await _models.vadModelPath(),
-        });
+        isolate =
+            await Isolate.spawn(_transcribeIsolateEntry, <String, dynamic>{
+              'sendPort': port.sendPort,
+              'wavPath': wavPath,
+              'encoderPath': await _models.encoderPath(),
+              'decoderPath': await _models.decoderPath(),
+              'tokensPath': await _models.tokensPath(),
+              'vadModelPath': await _models.vadModelPath(),
+            });
 
         final List<LyricLine> lines = <LyricLine>[];
 
@@ -119,7 +106,9 @@ class SherpaTranscriptionService implements TranscriptionService {
               if (text.isNotEmpty) {
                 lines.add(
                   LyricLine(
-                    time: Duration(milliseconds: message['startMs'] as int? ?? 0),
+                    time: Duration(
+                      milliseconds: message['startMs'] as int? ?? 0,
+                    ),
                     text: text,
                   ),
                 );
@@ -132,8 +121,6 @@ class SherpaTranscriptionService implements TranscriptionService {
                 ),
               );
             case 'progress':
-              // A segment was filtered out (instrumental/hallucination) -
-              // still move the percentage so the UI doesn't look stuck.
               controller.add(
                 TranscriptionProgress(
                   fraction: (message['fraction'] as num?)?.toDouble(),
@@ -154,7 +141,8 @@ class SherpaTranscriptionService implements TranscriptionService {
             case 'error':
               controller.addError(
                 TranscriptionException(
-                  message['message'] as String? ?? 'Unknown transcription error',
+                  message['message'] as String? ??
+                      'Unknown transcription error',
                 ),
               );
               await controller.close();
@@ -162,10 +150,6 @@ class SherpaTranscriptionService implements TranscriptionService {
           }
         }
       } catch (error) {
-        // A deliberate cancellation (song switched, user cancelled) can
-        // surface here as the native decode throwing DECODE_CANCELLED, or as
-        // the isolate's port closing mid-read - neither is a real failure,
-        // so don't report it as one.
         if (!cancelled && !controller.isClosed) {
           controller.addError(TranscriptionException(error.toString()));
           await controller.close();
@@ -186,9 +170,6 @@ class SherpaTranscriptionService implements TranscriptionService {
   }
 }
 
-/// Runs entirely inside a spawned isolate - must be a top-level function.
-/// Every sherpa-onnx object created here must be freed here; none of it can
-/// cross the isolate boundary.
 void _transcribeIsolateEntry(Map<String, dynamic> args) {
   final SendPort sendPort = args['sendPort'] as SendPort;
 
@@ -196,8 +177,6 @@ void _transcribeIsolateEntry(Map<String, dynamic> args) {
   sherpa_onnx.OfflineRecognizer? recognizer;
 
   try {
-    // Each isolate has its own FFI binding state - this must run here, not
-    // just in the main isolate.
     sherpa_onnx.initBindings();
 
     final sherpa_onnx.VadModelConfig vadConfig = sherpa_onnx.VadModelConfig(
@@ -220,29 +199,27 @@ void _transcribeIsolateEntry(Map<String, dynamic> args) {
           language: 'en',
           task: 'transcribe',
         );
-    final sherpa_onnx.OfflineModelConfig modelConfig = sherpa_onnx.OfflineModelConfig(
-      whisper: whisperConfig,
-      tokens: args['tokensPath'] as String,
-      numThreads: 2,
-      debug: false,
-      modelType: 'whisper',
-    );
+    final sherpa_onnx.OfflineModelConfig modelConfig =
+        sherpa_onnx.OfflineModelConfig(
+          whisper: whisperConfig,
+          tokens: args['tokensPath'] as String,
+          numThreads: 2,
+          debug: false,
+          modelType: 'whisper',
+        );
     recognizer = sherpa_onnx.OfflineRecognizer(
       sherpa_onnx.OfflineRecognizerConfig(model: modelConfig),
     );
 
-    final sherpa_onnx.WaveData wave = sherpa_onnx.readWave(args['wavPath'] as String);
+    final sherpa_onnx.WaveData wave = sherpa_onnx.readWave(
+      args['wavPath'] as String,
+    );
     final Float32List samples = wave.samples;
     final double totalDurationSec = samples.length / 16000.0;
 
     const int windowSize = 512;
     int offset = 0;
 
-    // Whisper tends to hallucinate short filler ("Thank you.", "...", a bare
-    // music note) on instrumental/silent segments a full-mix VAD pass will
-    // inevitably still flag as "speech" - drop those rather than surface them
-    // as bogus lyric lines. The user reviewing/editing a draft is the real
-    // accuracy net, but this cuts the obvious noise before it gets there.
     String? lastEmittedText;
 
     void drainSegments() {
@@ -256,7 +233,9 @@ void _transcribeIsolateEntry(Map<String, dynamic> args) {
         final sherpa_onnx.OfflineStream stream = recognizer!.createStream();
         stream.acceptWaveform(samples: segment.samples, sampleRate: 16000);
         recognizer.decode(stream);
-        final sherpa_onnx.OfflineRecognizerResult result = recognizer.getResult(stream);
+        final sherpa_onnx.OfflineRecognizerResult result = recognizer.getResult(
+          stream,
+        );
         stream.free();
 
         final String text = result.text.trim();
@@ -274,9 +253,10 @@ void _transcribeIsolateEntry(Map<String, dynamic> args) {
             'fraction': fraction,
           });
         } else {
-          // Still report progress so the UI's percentage keeps moving even
-          // through stretches of filtered-out instrumental segments.
-          sendPort.send(<String, dynamic>{'type': 'progress', 'fraction': fraction});
+          sendPort.send(<String, dynamic>{
+            'type': 'progress',
+            'fraction': fraction,
+          });
         }
       }
     }
@@ -291,16 +271,16 @@ void _transcribeIsolateEntry(Map<String, dynamic> args) {
 
     sendPort.send(<String, dynamic>{'type': 'done'});
   } catch (error) {
-    sendPort.send(<String, dynamic>{'type': 'error', 'message': error.toString()});
+    sendPort.send(<String, dynamic>{
+      'type': 'error',
+      'message': error.toString(),
+    });
   } finally {
     vad?.free();
     recognizer?.free();
   }
 }
 
-/// Rejects empty output and punctuation/symbol-only output (no letters at
-/// all) - the two shapes Whisper's instrumental-segment hallucinations
-/// almost always take.
 bool _looksLikeLyric(String text) {
   if (text.isEmpty) {
     return false;

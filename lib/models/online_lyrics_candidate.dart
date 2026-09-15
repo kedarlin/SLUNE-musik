@@ -1,6 +1,3 @@
-/// One search result from the online lyrics lookup (LRCLIB). Purely a data
-/// holder - the user picks one of these from a list, nothing is ever
-/// auto-selected.
 class OnlineLyricsCandidate {
   const OnlineLyricsCandidate({
     required this.trackName,
@@ -29,7 +26,6 @@ class OnlineLyricsCandidate {
   final String artistName;
   final String albumName;
 
-  /// Seconds.
   final int duration;
   final bool instrumental;
   final String? plainLyrics;
@@ -40,10 +36,6 @@ class OnlineLyricsCandidate {
   bool get hasAny => hasSynced || hasPlain;
 }
 
-/// Thrown by [OnlineLyricsService] for anything that isn't a plain "no
-/// results" - a dropped connection, a timeout, a bad response. Kept distinct
-/// from an empty result list so the UI can tell "you're offline" apart from
-/// "this song just isn't in the database".
 class OnlineLyricsException implements Exception {
   OnlineLyricsException(this.message);
 

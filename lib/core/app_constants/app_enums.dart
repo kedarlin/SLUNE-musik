@@ -4,9 +4,6 @@ enum RepeatMode { off, one, all }
 
 enum SongSortField { title, length, date, size }
 
-/// Index maps 1:1 onto android.media.audiofx.PresetReverb's
-/// PRESET_NONE / SMALLROOM / MEDIUMROOM / LARGEROOM / MEDIUMHALL / LARGEHALL /
-/// PLATE constants (0..6). The native side decides how to realise it.
 enum ReverbPreset {
   none,
   smallRoom,

@@ -6,8 +6,6 @@ import '../../bloc/songs/songs_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/rename_song.dart';
 
-/// The "Rename to" dialog - title, a single text field with an inline clear
-/// button, Cancel/OK, matching the reference the rename option follows.
 class RenameSongDialog {
   static Future<void> show(
     BuildContext context, {

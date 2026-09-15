@@ -74,10 +74,6 @@ class _CreatePlaylistSheetState extends State<CreatePlaylistSheet> {
   Widget build(BuildContext context) {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: 0.5.sh),
-      // Scrollable, not just constrained: this content is normally short,
-      // but the keyboard's inset padding below can still push the total
-      // past the 0.5sh cap on a short/wide screen - scroll rather than
-      // overflow in that case.
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
           bottom: MediaQuery.viewInsetsOf(context).bottom,

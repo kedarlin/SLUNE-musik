@@ -71,7 +71,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 
-  /// Swipe left -> next song, swipe right -> previous song.
   void _onSwipeChangeSong(DragEndDetails details) {
     final double? velocity = details.primaryVelocity;
     if (velocity == null || velocity == 0) {
@@ -234,8 +233,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           _tonearmController.reverse();
         }
 
-        // Queue was cleared (e.g. from the Playing Queue sheet) - nothing
-        // left to show here, so close back to the song list.
         if (_musicControllerBloc.stateData.queue.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -427,9 +424,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             child: AnimatedBuilder(
               animation: _tonearmController,
               builder: (BuildContext context, Widget? child) {
-                // 0.360 rad used to leave the arm still visually resting on
-                // the disc edge in the "off" pose - lifted further out here
-                // so off clearly reads as off.
                 final double angle = lerpDouble(
                   0.52,
                   0.0,
@@ -562,11 +556,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     );
   }
 
-  /// Tap "A" / "B" to mark the current playback position as that loop point;
-  /// once both are set, playback repeats between them (enforced in
-  /// MusicControllerBloc against the position it already streams in). "X"
-  /// clears both without hiding this row, so the user can re-mark points
-  /// without reopening it via the toolbar icon.
   Widget _buildAbLoopRow() {
     final int? a = _musicControllerBloc.stateData.abLoopAMs;
     final int? b = _musicControllerBloc.stateData.abLoopBMs;
@@ -776,8 +765,6 @@ class _ScrollingTitle extends StatelessWidget {
   final TextStyle style;
   final double height;
 
-  /// Some tags carry newlines or long runs of padding spaces - collapse any
-  /// whitespace run to a single space so the scrolling title stays tidy.
   static String _clean(String raw) =>
       raw.replaceAll(RegExp(r'\s+'), ' ').trim();
 

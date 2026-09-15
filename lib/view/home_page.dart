@@ -110,7 +110,6 @@ class _HomePageState extends State<HomePage>
                     : 0.0;
 
                 return GestureDetector(
-                  // Swipe left -> next song, swipe right -> previous song.
                   onHorizontalDragEnd: (DragEndDetails details) {
                     final double? velocity = details.primaryVelocity;
                     if (velocity == null || velocity == 0) {

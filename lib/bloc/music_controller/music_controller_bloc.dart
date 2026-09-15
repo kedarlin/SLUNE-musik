@@ -11,17 +11,6 @@ import '../songs/songs_bloc.dart';
 part 'music_controller_event.dart';
 part 'music_controller_state.dart';
 
-/// Public event/state surface is unchanged from the native-engine version,
-/// so every view file compiles and behaves the same without edits.
-///
-/// Internally, ExoPlayer (via PlayerClient/PlayerChannel/PlaybackService) now
-/// owns the queue, decode, buffering, and playback position - this bloc
-/// mirrors that into MusicControllerStateData for the UI rather than
-/// computing it by hand. That hand-computed index arithmetic is what caused
-/// the previous-track RangeError in the old engine; every queue mutation
-/// here forwards to PlayerClient's incremental Media3 calls and then trusts
-/// the next PlayerStateReceived event for the authoritative currentIndex,
-/// rather than re-deriving it locally.
 class MusicControllerBloc
     extends Bloc<MusicControllerEvent, MusicControllerState> {
   MusicControllerBloc(this.songsBloc) : super(MusicControllerInitial()) {
@@ -77,8 +66,6 @@ class MusicControllerBloc
 
   Box<dynamic> get _settingsBox => Hive.box<dynamic>('settings');
 
-  /// Speed / pitch / equalizer / reverb are all sticky across sessions and
-  /// across tracks - the user dials in a sound once and it stays.
   void _restoreAudioFxPreferences() {
     stateData.speed = (_settingsBox.get('fxSpeed', defaultValue: 1.0) as num)
         .toDouble();
@@ -107,8 +94,6 @@ class MusicControllerBloc
         .values[reverbIndex.clamp(0, ReverbPreset.values.length - 1)];
   }
 
-  /// Pushes the restored speed/pitch/effects to the player. Called after a
-  /// queue is (re)set, since a fresh ExoPlayer starts flat.
   Future<void> _applyAudioFx() async {
     if (stateData.speed != 1.0) {
       await _player.setSpeed(stateData.speed);
@@ -138,14 +123,6 @@ class MusicControllerBloc
     }
   }
 
-  // --- Last-session persistence -------------------------------------------
-  //
-  // The last queue (song ids only), current index and position are stored in
-  // the Hive settings box so reopening the app restores where the user left
-  // off - paused, not auto-playing. Cost is a list of ints plus two ints:
-  // a few KB at most for a large library, the same shape as the existing
-  // favorites / recently-played data.
-
   void _scheduleSessionRestore() {
     if (songsBloc.stateData.songs.isNotEmpty) {
       add(_RestoreLastSession());
@@ -165,7 +142,6 @@ class MusicControllerBloc
     await _songsSubscription?.cancel();
     _songsSubscription = null;
 
-    // Never clobber a session the user has already started this launch.
     if (_sessionRestored || stateData.queue.isNotEmpty) {
       return;
     }
@@ -217,8 +193,6 @@ class MusicControllerBloc
     emit(stateData);
   }
 
-  /// Fire-and-forget write of the current queue/index/position. Hive applies
-  /// it in memory immediately and flushes to disk in the background.
   void _persistSession() {
     if (stateData.queue.isEmpty) {
       _settingsBox
@@ -238,9 +212,6 @@ class MusicControllerBloc
     _lastPersistedPositionMs = stateData.position;
   }
 
-  /// Keeps `song`/`index` consistent with `queue` after a local mutation,
-  /// as a bounds-safety net for the brief window before the next
-  /// PlayerStateReceived event corrects `index` from Media3's own timeline.
   void _syncSongAndIndex() {
     if (stateData.queue.isEmpty) {
       stateData.index = 0;
@@ -302,9 +273,6 @@ class MusicControllerBloc
       }
     }
 
-    // A-B loop points belong to whatever song they were set on - a track
-    // change (including auto-advance) drops them rather than looping a
-    // section of the wrong song.
     if (stateData.index != previousIndex) {
       stateData.abLoopAMs = null;
       stateData.abLoopBMs = null;
@@ -314,7 +282,6 @@ class MusicControllerBloc
       stateData.position = stateData.abLoopAMs!;
     }
 
-    // Persist on a track change or every ~5s of playback, not every tick.
     if (stateData.queue.isNotEmpty &&
         (stateData.index != previousIndex ||
             (stateData.position - _lastPersistedPositionMs).abs() >= 5000)) {
@@ -336,7 +303,6 @@ class MusicControllerBloc
     }
 
     stateData.isPlaying = !stateData.isPlaying;
-    // Capture the resume point now - app kills often skip close().
     _persistSession();
     emit(stateData);
   }
@@ -376,9 +342,6 @@ class MusicControllerBloc
     emit(stateData);
   }
 
-  /// Physically reorders `queue` (rather than using Media3's own
-  /// shuffle-order mode) so the Playing Queue sheet keeps showing songs in
-  /// actual upcoming-play order, matching the existing view's expectations.
   Future<void> _onToggleShuffle(
     ToggleShuffle event,
     Emitter<MusicControllerState> emit,
@@ -407,8 +370,6 @@ class MusicControllerBloc
       stateData.index = 0;
     }
 
-    // Swap the queue around the currently-playing track without restarting
-    // it - shuffle only ever reorders the *other* items relative to it.
     await _player.reorderKeepingCurrent(
       songs: stateData.queue,
       currentIndex: stateData.index,
@@ -432,12 +393,9 @@ class MusicControllerBloc
         stateData.repeatMode = RepeatMode.off;
     }
 
-    // RepeatMode's index matches Media3's REPEAT_MODE_OFF/ONE/ALL directly.
     await _player.setRepeat(stateData.repeatMode.index);
     emit(stateData);
   }
-
-  // --- audiofx panel ---------------------------------------------------
 
   Future<void> _onEqBandsInitialized(
     EqBandsInitialized event,
@@ -464,8 +422,6 @@ class MusicControllerBloc
     stateData.eqEnabled = event.enabled;
     await _player.setEqEnabled(event.enabled);
     if (event.enabled) {
-      // (Re)push the current curve so a device that just got its Equalizer
-      // enabled reflects it immediately.
       if (stateData.eqPreset >= 0) {
         await _player.setEqPreset(stateData.eqPreset);
       } else {
@@ -478,8 +434,6 @@ class MusicControllerBloc
     emit(stateData);
   }
 
-  /// The equalizer sheet has already applied the preset natively (it needs the
-  /// resolved curve for its sliders) - this only mirrors + persists it.
   Future<void> _onEqPresetSelected(
     EqPresetSelected event,
     Emitter<MusicControllerState> emit,
@@ -507,10 +461,7 @@ class MusicControllerBloc
       ];
     }
     stateData.eqBands[event.band] = event.levelMb;
-    stateData.eqPreset = -1; // custom
-    // Remembered separately from eqBands so a later named-preset selection
-    // (which overwrites eqBands) doesn't also erase what the user dialed in
-    // by hand - see customEqBands' doc comment.
+    stateData.eqPreset = -1;
     stateData.customEqBands = List<int>.from(stateData.eqBands);
     await _player.setEqBand(event.band, event.levelMb);
     await _settingsBox.put('fxEqPreset', -1);
@@ -549,10 +500,6 @@ class MusicControllerBloc
     emit(stateData);
   }
 
-  /// Media3 handles repeat/shuffle-aware navigation itself (confirmed: an
-  /// explicit skip under REPEAT_MODE_ONE moves to the actual next/previous
-  /// item rather than replaying the current one - matching standard player
-  /// conventions rather than the old hand-rolled special case).
   Future<void> _onNextSong(
     NextSong event,
     Emitter<MusicControllerState> emit,
@@ -637,8 +584,6 @@ class MusicControllerBloc
     final SongModel moved = stateData.queue.removeAt(event.oldIndex);
     stateData.queue.insert(newIndex, moved);
 
-    // Non-disruptive: Media3 updates its own currentIndex without
-    // interrupting whatever is currently playing.
     await _player.moveItem(event.oldIndex, newIndex);
 
     _syncSongAndIndex();
@@ -656,8 +601,6 @@ class MusicControllerBloc
     }
 
     stateData.queue.removeAt(event.index);
-    // If this was the currently-playing item, Media3 advances to the next
-    // one itself (per repeat mode) - no manual "what plays now" logic needed.
     await _player.removeItem(event.index);
 
     if (stateData.queue.isEmpty) {
@@ -702,20 +645,11 @@ class MusicControllerBloc
     await _player.jumpTo(event.index);
   }
 
-  // --- A-B repeat --------------------------------------------------------
-  //
-  // Enforced client-side against the position already ticking in from
-  // Media3 every ~200ms (see _onPlayerStateReceived) rather than a native
-  // ExoPlayer PlayerMessage - that granularity is well under what's audible
-  // for a practice-loop feature, and it needs no new native surface at all.
-
   Future<void> _onSetAbLoopPointA(
     SetAbLoopPointA event,
     Emitter<MusicControllerState> emit,
   ) async {
     stateData.abLoopAMs = stateData.position;
-    // A new A past the existing B would loop backward - drop B instead,
-    // so the user just re-sets it rather than the loop doing nothing.
     if (stateData.abLoopBMs != null &&
         stateData.abLoopBMs! <= stateData.abLoopAMs!) {
       stateData.abLoopBMs = null;

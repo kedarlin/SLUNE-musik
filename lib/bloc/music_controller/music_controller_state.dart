@@ -14,18 +14,13 @@ class MusicControllerStateData extends MusicControllerState {
   bool isShuffle = false;
   RepeatMode repeatMode = RepeatMode.off;
 
-  // --- audiofx panel ---
   bool eqEnabled = false;
-  int eqPreset = -1; // -1 = custom
-  List<int> eqBands = <int>[]; // millibels per band; length == caps.bandCount
+  int eqPreset = -1;
+  List<int> eqBands = <int>[];
 
-  /// The last curve the user actually dragged by hand, kept separate from
-  /// [eqBands] (which a named preset selection overwrites) so switching
-  /// Normal -> Custom restores what the user had, not whatever preset was
-  /// last applied over it.
   List<int> customEqBands = <int>[];
-  int bassBoost = 0; // 0..1000
-  int virtualizer = 0; // 0..1000
+  int bassBoost = 0;
+  int virtualizer = 0;
   ReverbPreset reverbPreset = ReverbPreset.none;
 
   SongModel? song;
@@ -35,9 +30,6 @@ class MusicControllerStateData extends MusicControllerState {
 
   DateTime? sleepTimerEndsAt;
 
-  // --- A-B repeat ---
-  // Ephemeral (never persisted, never survives a track change) - a practice
-  // tool for looping a section of the *current* song, not a saved setting.
   int? abLoopAMs;
   int? abLoopBMs;
 

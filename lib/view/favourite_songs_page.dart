@@ -25,15 +25,13 @@ class _FavouriteSongsPageState extends State<FavouriteSongsPage>
   void initState() {
     super.initState();
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    // Favourites are derived from the library - make sure it is loaded
-    // (no-ops if it already is), then resolve the favourite ids.
     _songsBloc.add(FetchSongs());
     _songsBloc.add(GetAllFavorites());
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin
+    super.build(context);
     return Column(
       children: <Widget>[
         BlocBuilder<SongsBloc, SongsState>(

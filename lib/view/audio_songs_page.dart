@@ -50,17 +50,11 @@ class _AllSongsPageState extends State<AllSongsPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // The user may have granted the permission from the system Settings
-    // screen after tapping the button below - re-check on resume.
     if (state == AppLifecycleState.resumed && _permissionDenied) {
       _requestPermissionThenLoadSongs(promptIfDenied: false);
     }
   }
 
-  /// Waits for the media permission before dispatching [FetchSongs], so the
-  /// query never runs unauthorized (which returns an empty list). When the
-  /// permission is denied, drives the in-list "Grant permission" prompt
-  /// instead.
   Future<void> _requestPermissionThenLoadSongs({
     bool promptIfDenied = true,
   }) async {
@@ -78,8 +72,6 @@ class _AllSongsPageState extends State<AllSongsPage>
     });
 
     if (granted) {
-      // Not forced: SongsBloc no-ops if the library is already loaded, so
-      // re-entering this tab / page never re-runs the query.
       _songsBloc.add(FetchSongs());
 
       if (!await Permission.notification.isGranted) {
@@ -91,8 +83,6 @@ class _AllSongsPageState extends State<AllSongsPage>
   @override
   bool get wantKeepAlive => true;
 
-  /// Returns whether audio/storage access is available, requesting it from
-  /// the user when [allowRequest] is set and the OS still allows a prompt.
   Future<bool> _resolveMediaPermission({required bool allowRequest}) async {
     Future<PermissionStatus> resolve(Permission permission) async {
       final PermissionStatus status = await permission.status;
@@ -112,8 +102,6 @@ class _AllSongsPageState extends State<AllSongsPage>
     final PermissionStatus audioStatus = await Permission.audio.status;
     final PermissionStatus storageStatus = await Permission.storage.status;
 
-    // Once the OS marks a permission permanently denied, request() no longer
-    // shows a dialog - the app settings screen is the only way back.
     if (audioStatus.isPermanentlyDenied || storageStatus.isPermanentlyDenied) {
       await openAppSettings();
       return;
@@ -208,7 +196,7 @@ class _AllSongsPageState extends State<AllSongsPage>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // AutomaticKeepAliveClientMixin
+    super.build(context);
     return Column(
       children: <Widget>[
         Container(
@@ -353,9 +341,6 @@ class _AllSongsPageState extends State<AllSongsPage>
                   thumbVisibility: false,
                   child: ListView.builder(
                     controller: _listScrollController,
-                    // SongTile is stateless - no per-item state to keep
-                    // alive, so skip the bookkeeping ListView otherwise
-                    // wraps every row in for that.
                     addAutomaticKeepAlives: false,
                     itemCount: isSearching
                         ? _songsBloc.stateData.searchSongs.length
@@ -368,17 +353,6 @@ class _AllSongsPageState extends State<AllSongsPage>
                       final bool isFavorite = _songsBloc.stateData.favoriteIds
                           .contains(song.id);
 
-                      // Playing a song always queues the full library so
-                      // next/previous works - even when tapped from a filtered
-                      // search result. Not searching: displayList already IS
-                      // the full list, so `index` is already the answer - no
-                      // need to search for it (a per-tile indexWhere() over
-                      // the whole library here was an O(n) scan run once per
-                      // visible row, i.e. O(n^2) for a scroll through the
-                      // whole list - the actual cause of the reported lag on
-                      // large libraries, not the artwork or the scrollbar).
-                      // Fall back to the visible list if the song somehow
-                      // isn't in the library list.
                       final List<SongModel> fullList =
                           _songsBloc.stateData.songs;
                       final int fullIndex = isSearching

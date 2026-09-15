@@ -14,11 +14,6 @@ import '../music_controller/music_controller_bloc.dart';
 part 'lyrics_event.dart';
 part 'lyrics_state.dart';
 
-/// Owns lyric resolution + the active-line cursor + the "generate" flow.
-///
-/// It observes [MusicControllerBloc]: on a song change it resolves lyrics
-/// (repository → sidecar), and on every position tick it advances the active
-/// line. It never drives playback itself.
 class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
   LyricsBloc(
     this._musicBloc, {
@@ -42,7 +37,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     on<_LyricsGenerationFailed>(_onGenerationFailed);
 
     _musicSub = _musicBloc.stream.listen(_onMusicState);
-    // Pick up whatever is already playing.
     _onMusicState(_musicBloc.state);
   }
 
@@ -58,12 +52,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
 
   int? _resolvingForSongId;
 
-  /// The song an interactive generation is currently running for. Cancelling
-  /// `_genSub` on a song change is not by itself a hard guarantee against a
-  /// result that was already in flight the instant the switch happened - the
-  /// progress/done/failed handlers below check against this before touching
-  /// [stateData], so a stray late result can never get displayed under the
-  /// wrong song.
   int? _generatingForSongId;
   int? _lastSeenSongId;
 
@@ -116,7 +104,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
       found = null;
     }
 
-    // A newer song may have started while we were awaiting.
     if (_resolvingForSongId != song.id) {
       return;
     }
@@ -124,9 +111,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     stateData
       ..lyrics = found
       ..status = found == null ? LyricsStatus.absent : LyricsStatus.present
-      // AI-sourced or picked-from-online lyrics always need a human look
-      // before they're "final" - the first time the user actually sees
-      // them they're still a draft, until they hit Save.
       ..isDraft =
           found?.source == LyricsSource.ai ||
           found?.source == LyricsSource.online;
@@ -189,14 +173,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
         );
   }
 
-  /// Interactive generation's results all arrive asynchronously, well after
-  /// the user could have switched songs. Cancelling `_genSub` on a song
-  /// change stops the *work*, but a result already in flight at that exact
-  /// instant can still land here after the switch - checking the song these
-  /// results belong to still matches what's on screen is what actually stops
-  /// a stale transcription from ever getting displayed under the wrong song
-  /// (this is what caused generation to visibly "carry over" onto the next
-  /// track when it hadn't been saved yet).
   bool _isStaleGeneration() => stateData.song?.id != _generatingForSongId;
 
   Future<void> _onGenerationProgress(
@@ -271,11 +247,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     emit(stateData);
   }
 
-  /// Fetches every LRCLIB candidate for the current song - never picks one
-  /// automatically, that's the user's call from the picker sheet. Kept
-  /// separate from [stateData.status] so the sheet can overlay whatever the
-  /// panel is already showing (including an existing AI draft the user
-  /// wants to check against an online result).
   Future<void> _onOnlineSearchRequested(
     LyricsOnlineSearchRequested event,
     Emitter<LyricsState> emit,
@@ -311,9 +282,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     emit(stateData);
   }
 
-  /// The user tapped one row of the online candidate list. Same draft/save
-  /// gate as an AI generation - a metadata match can still be the wrong
-  /// version of a song, so it isn't trusted until saved.
   Future<void> _onOnlineCandidateSelected(
     LyricsOnlineCandidateSelected event,
     Emitter<LyricsState> emit,
@@ -348,10 +316,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     if (event.lyrics.isEmpty) {
       return;
     }
-    // Saving is the "I've reviewed this" action, whether or not the text was
-    // actually edited - graduate it out of draft status (AI-generated or
-    // picked from the online list) so it doesn't nag again next time this
-    // song plays.
     final bool wasDraftSource =
         event.lyrics.source == LyricsSource.ai ||
         event.lyrics.source == LyricsSource.online;
@@ -360,7 +324,6 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
         : event.lyrics;
     await _repository.save(event.song, reviewed);
 
-    // Only touch the live state if we're still on that song.
     if (stateData.song?.id == event.song.id) {
       stateData
         ..lyrics = reviewed

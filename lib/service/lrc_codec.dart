@@ -1,18 +1,15 @@
 import '../models/lyrics.dart';
 
-/// Parses and writes the LRC lyric format.
-///
-/// Handles the common subset: `[ti:]` / `[ar:]` / `[al:]` / `[offset:]`
-/// metadata, `[mm:ss.xx]` (or `.xxx`) line timestamps, multiple timestamps on
-/// one line, and plain (untimed) text as a fallback.
 class LrcCodec {
   const LrcCodec._();
 
   static final RegExp _tag = RegExp(r'\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]');
   static final RegExp _meta = RegExp(r'^\[(ti|ar|al|by|offset|length):(.*)\]$');
 
-  /// Returns null if [content] has no usable lyric content at all.
-  static Lyrics? parse(String content, {LyricsSource source = LyricsSource.lrc}) {
+  static Lyrics? parse(
+    String content, {
+    LyricsSource source = LyricsSource.lrc,
+  }) {
     if (content.trim().isEmpty) {
       return null;
     }
@@ -57,10 +54,7 @@ class LrcCodec {
             Duration(minutes: minutes, seconds: seconds, milliseconds: millis) +
             offset;
         lines.add(
-          LyricLine(
-            time: t.isNegative ? Duration.zero : t,
-            text: text,
-          ),
+          LyricLine(time: t.isNegative ? Duration.zero : t, text: text),
         );
       }
     }

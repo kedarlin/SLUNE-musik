@@ -41,8 +41,6 @@ class _QueueSheetBody extends StatefulWidget {
 class _QueueSheetBodyState extends State<_QueueSheetBody> {
   final ScrollController _scrollController = ScrollController();
 
-  // Fixed row height: keeps ReorderableListView layout O(1) (no measuring
-  // 100 children) and makes the scroll-to-current offset exact.
   double get _itemExtent => 60.h;
 
   int _lastRenderedIndex = -1;
@@ -79,8 +77,6 @@ class _QueueSheetBodyState extends State<_QueueSheetBody> {
     return BlocBuilder<MusicControllerBloc, MusicControllerState>(
       bloc: musicBloc,
       buildWhen: (MusicControllerState prev, MusicControllerState curr) {
-        // Ignore the ~200ms position ticks; rebuild only when the queue
-        // itself or the current track changes.
         if (curr is MusicQueueChanged) {
           return true;
         }

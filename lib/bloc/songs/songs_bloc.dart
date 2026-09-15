@@ -106,9 +106,6 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
         uriType: UriType.EXTERNAL,
       );
     } catch (_) {
-      // Missing permission or an OS-side query failure - surface as an empty
-      // list rather than a stuck loader; the caller re-fetches once access
-      // is granted.
       emit(stateData);
       return;
     }

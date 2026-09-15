@@ -14,9 +14,6 @@ import '../service/lyrics_repository.dart';
 import '../widgets/common/sheet_shell.dart';
 import 'lyrics_editor.dart';
 
-/// The panel shown in place of the turntable disc. Line-synced when timed
-/// lyrics exist, otherwise a scrollable block, otherwise an empty state with
-/// Generate / Add-manually actions.
 class LyricsView extends StatefulWidget {
   const LyricsView({
     required this.lyricsBloc,
@@ -50,15 +47,6 @@ class _LyricsViewState extends State<LyricsView> {
     _lineKeys = List<GlobalKey>.generate(count, (_) => GlobalKey());
   }
 
-  /// Keeps the active line centered in the panel, karaoke-style.
-  ///
-  /// This deliberately does not use `Scrollable.ensureVisible`: that helper
-  /// only scrolls when the target would otherwise leave the viewport, so
-  /// once a line was already visible somewhere on screen it never moved
-  /// again - the highlight kept tracking the right line, but the scroll
-  /// position didn't follow it. Computing the centering offset directly and
-  /// animating to it on every active-line change is what actually keeps it
-  /// centered as playback advances.
   void _scrollToActive(int index) {
     if (index < 0 ||
         index >= _lineKeys.length ||
@@ -79,7 +67,6 @@ class _LyricsViewState extends State<LyricsView> {
       final RenderAbstractViewport viewport = RenderAbstractViewport.of(
         renderObject,
       );
-      // Offset that would put this line's top edge at the viewport's top.
       final double lineOffset = viewport
           .getOffsetToReveal(renderObject, 0.0)
           .offset;
@@ -97,10 +84,6 @@ class _LyricsViewState extends State<LyricsView> {
     });
   }
 
-  /// Soft-fades the top and bottom edges of [child] to transparent, instead
-  /// of hard-clipping a line that's scrolled halfway out of view.
-  /// `BlendMode.dstIn` uses the gradient's alpha to mask the content under
-  /// it, so the fade tracks the panel's own bounds regardless of its size.
   Widget _fadeEdges({required Widget child}) {
     return ShaderMask(
       shaderCallback: (Rect bounds) {
@@ -148,9 +131,6 @@ class _LyricsViewState extends State<LyricsView> {
     );
   }
 
-  /// Opens the online-lookup picker. The search kicks off immediately; the
-  /// sheet itself just renders whatever the bloc's `online*` state fields
-  /// are doing - loading, an error, or the candidate list to pick from.
   void _openOnlineSearch() {
     widget.lyricsBloc.add(LyricsOnlineSearchRequested());
     showModalBottomSheet<void>(
@@ -520,10 +500,6 @@ class _LyricsViewState extends State<LyricsView> {
   }
 }
 
-/// Bottom sheet for the "Search Online" flow. Purely a picker - it shows
-/// whatever LRCLIB returned and lets the user tap the row that's actually
-/// their song; nothing is auto-selected and nothing here ever navigates
-/// outside the app.
 class _OnlineLyricsSheet extends StatelessWidget {
   const _OnlineLyricsSheet({required this.lyricsBloc});
 

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
-/// Placeholder rows shown while the song library is loading, shaped like
-/// [SongTile] so nothing jumps in size once the real list swaps in.
 class SongListSkeleton extends StatelessWidget {
   const SongListSkeleton({super.key, this.itemCount = 10});
 

@@ -7,11 +7,6 @@ import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
 import '../models/lyrics.dart';
 
-/// Line-by-line lyric editor.
-///
-/// Timed mode: each row is a timestamp (tap while the song plays to set it to
-/// the current position) plus editable text. Plain mode: one free-form field,
-/// saved without timing.
 class LyricsEditorPage extends StatefulWidget {
   const LyricsEditorPage({
     required this.song,
@@ -132,8 +127,6 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
         }
       });
     }
-    // Dispose after the dialog's exit transition so a late rebuild of the
-    // (now-gone) TextField can't touch a disposed controller.
     WidgetsBinding.instance.addPostFrameCallback((_) => input.dispose());
   }
 
