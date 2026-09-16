@@ -3,6 +3,13 @@ package com.example.music.playback
 import android.content.ComponentName
 import android.content.ContentUris
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -43,6 +50,8 @@ private const val POSITION_POLL_MS = 200L
  */
 class PlayerChannel(context: Context) {
 
+    private val audioManager =
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val handler = Handler(Looper.getMainLooper())
     private var controller: MediaController? = null
     private var eventSink: EventChannel.EventSink? = null
@@ -247,6 +256,35 @@ class PlayerChannel(context: Context) {
                 putInt("preset", (args?.get("preset") as? Int) ?: 0)
             }
             "getFxCaps" -> getFxCaps(result)
+            "getOutputBucket" -> result.success(currentOutputBucket())
+            "getFormatInfo" -> {
+                val sourcePath = args?.get("sourcePath") as? String
+                result.success(
+                    if (sourcePath != null) getFormatInfo(sourcePath) else emptyMap<String, Any?>()
+                )
+            }
+            "getHiResSupport" -> {
+                val sourcePath = args?.get("sourcePath") as? String
+                result.success(if (sourcePath != null) getHiResSupport(sourcePath) else "unknown")
+            }
+            "setHiRes" -> sendFx(result, PlaybackService.CMD_SET_HI_RES) {
+                putBoolean("enabled", (args?.get("enabled") as? Boolean) ?: false)
+            }
+            "setSeekButtons" -> sendFx(result, PlaybackService.CMD_SET_SEEK_BUTTONS) {
+                putBoolean("enabled", (args?.get("enabled") as? Boolean) ?: false)
+            }
+            "setCrossfade" -> sendFx(result, PlaybackService.CMD_SET_CROSSFADE) {
+                putInt("ms", (args?.get("ms") as? Int) ?: 0)
+            }
+            "setResumeOnBluetooth" -> sendFx(result, PlaybackService.CMD_SET_RESUME_ON_BLUETOOTH) {
+                putBoolean("enabled", (args?.get("enabled") as? Boolean) ?: false)
+            }
+            "setPreamp" -> sendFx(result, PlaybackService.CMD_FX_PREAMP) {
+                putInt("mb", (args?.get("mb") as? Int) ?: 0)
+            }
+            "setMono" -> sendFx(result, PlaybackService.CMD_SET_MONO) {
+                putBoolean("enabled", (args?.get("enabled") as? Boolean) ?: false)
+            }
             else -> result.notImplemented()
         }
     }
@@ -304,6 +342,111 @@ class PlayerChannel(context: Context) {
             },
             MoreExecutors.directExecutor(),
         )
+    }
+
+    /**
+     * Best-effort "what kind of output is this probably playing through"
+     * bucket, used by MusicControllerBloc to switch between per-device EQ
+     * profiles. Android doesn't expose a direct "which device is this
+     * specific app's audio actually routed to" query without an active
+     * AudioTrack reference, so this uses the same priority heuristic the OS
+     * itself generally follows: a wired connection wins over Bluetooth,
+     * which wins over the built-in speaker.
+     */
+    private fun currentOutputBucket(): String {
+        val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        val hasWired = devices.any {
+            it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+        }
+        if (hasWired) return "wired"
+        val hasBluetooth = devices.any {
+            it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+        }
+        if (hasBluetooth) return "bluetooth"
+        return "speaker"
+    }
+
+    /**
+     * Reads container-level format info (no decode) for the Hi-Res/Lossless
+     * settings row - sample rate/channel count/bitrate come straight from
+     * the track's own MediaFormat; bit depth only comes back non-null for
+     * lossless containers (FLAC/WAV) that actually carry a KEY_PCM_ENCODING,
+     * since lossy codecs (MP3/AAC/OGG) have no fixed bit depth to report.
+     */
+    private fun getFormatInfo(sourcePath: String): Map<String, Any?> {
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(sourcePath)
+            var result: Map<String, Any?> = emptyMap()
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                if (!mime.startsWith("audio/")) continue
+
+                result = mapOf(
+                    "mimeType" to mime,
+                    "sampleRateHz" to format.getIntegerOrNull(MediaFormat.KEY_SAMPLE_RATE),
+                    "channelCount" to format.getIntegerOrNull(MediaFormat.KEY_CHANNEL_COUNT),
+                    "bitrateBps" to format.getIntegerOrNull(MediaFormat.KEY_BIT_RATE),
+                    "bitDepth" to pcmEncodingToBitDepth(format),
+                )
+                break
+            }
+            result
+        } catch (error: Exception) {
+            Log.w(TAG, "getFormatInfo failed for $sourcePath", error)
+            emptyMap()
+        } finally {
+            extractor.release()
+        }
+    }
+
+    private fun MediaFormat.getIntegerOrNull(key: String): Int? =
+        if (containsKey(key)) getInteger(key) else null
+
+    private fun pcmEncodingToBitDepth(format: MediaFormat): Int? {
+        val encoding = format.getIntegerOrNull(MediaFormat.KEY_PCM_ENCODING) ?: return null
+        return when (encoding) {
+            AudioFormat.ENCODING_PCM_16BIT -> 16
+            AudioFormat.ENCODING_PCM_24BIT_PACKED -> 24
+            AudioFormat.ENCODING_PCM_32BIT -> 32
+            AudioFormat.ENCODING_PCM_FLOAT -> 32
+            else -> null
+        }
+    }
+
+    /**
+     * Honest, per-file/per-device direct-output status via the real
+     * AudioManager.getDirectPlaybackSupport() (API 29+) - reports what the
+     * OS actually grants rather than assuming Hi-Res mode guarantees a
+     * bit-perfect path (Android has no documented universal API to force
+     * that the way desktop OSes do).
+     */
+    private fun getHiResSupport(sourcePath: String): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "unknown"
+        val info = getFormatInfo(sourcePath)
+        val sampleRate = info["sampleRateHz"] as? Int ?: return "unknown"
+        val channelCount = info["channelCount"] as? Int ?: return "unknown"
+        return try {
+            val channelMask =
+                if (channelCount == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
+            val audioFormat = AudioFormat.Builder()
+                .setSampleRate(sampleRate)
+                .setChannelMask(channelMask)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .build()
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            val support = AudioManager.getDirectPlaybackSupport(audioFormat, attributes)
+            if (support != AudioManager.DIRECT_PLAYBACK_NOT_SUPPORTED) "direct" else "mixed"
+        } catch (error: Exception) {
+            Log.w(TAG, "getDirectPlaybackSupport failed for $sourcePath", error)
+            "unknown"
+        }
     }
 
     private fun toMediaItem(map: Map<*, *>): MediaItem {

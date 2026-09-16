@@ -11,6 +11,7 @@ import 'core/routes/app_routes.dart';
 import 'service/sherpa_transcription_service.dart';
 import 'view/home_page.dart';
 import 'view/playlist_detail_page.dart';
+import 'view/settings_page.dart';
 
 class GoRouterInit {
   static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -60,6 +61,11 @@ class GoRouterInit {
             path: '${HomePage.routePath}/playlist/:id',
             builder: (BuildContext context, GoRouterState state) =>
                 PlaylistDetailPage(playlistId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: AppRouter.settings,
+            builder: (BuildContext context, GoRouterState state) =>
+                const SettingsPage(),
           ),
         ],
       ),

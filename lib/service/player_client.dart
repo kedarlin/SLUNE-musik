@@ -162,6 +162,85 @@ class PlayerClient {
   Future<void> setReverb(int preset) =>
       _invoke('setReverb', <String, dynamic>{'preset': preset});
 
+  Future<void> setCrossfade(int ms) =>
+      _invoke('setCrossfade', <String, dynamic>{'ms': ms});
+
+  Future<void> setResumeOnBluetooth(bool enabled) =>
+      _invoke('setResumeOnBluetooth', <String, dynamic>{'enabled': enabled});
+
+  /// [mb] is millibels, added on top of every EQ band (roughly -12..+12 dB).
+  Future<void> setPreamp(int mb) =>
+      _invoke('setPreamp', <String, dynamic>{'mb': mb});
+
+  /// Sums left+right into both output channels when [enabled], matching
+  /// Android's own "Mono audio" accessibility behaviour.
+  Future<void> setMono(bool enabled) =>
+      _invoke('setMono', <String, dynamic>{'enabled': enabled});
+
+  /// Float PCM output + EQ/bass/virtualizer/reverb bypass. See
+  /// PlaybackService.setHiResEnabled for why this is the honest ceiling of
+  /// what an app can request, not a guarantee of bit-perfect output.
+  Future<void> setHiRes(bool enabled) =>
+      _invoke('setHiRes', <String, dynamic>{'enabled': enabled});
+
+  /// Swaps the notification's previous/next buttons for rewind/fast-forward
+  /// when [enabled].
+  Future<void> setSeekButtons(bool enabled) =>
+      _invoke('setSeekButtons', <String, dynamic>{'enabled': enabled});
+
+  /// Container-level format info for [sourcePath] (no decode): mimeType,
+  /// sampleRateHz, channelCount, bitrateBps, bitDepth (null for lossy
+  /// formats). Empty map if the query fails.
+  Future<Map<String, dynamic>> getFormatInfo(String sourcePath) async {
+    try {
+      final dynamic raw = await _method.invokeMethod<dynamic>(
+        'getFormatInfo',
+        <String, dynamic>{'sourcePath': sourcePath},
+      );
+      if (raw is Map) {
+        return Map<String, dynamic>.from(raw);
+      }
+      return <String, dynamic>{};
+    } on PlatformException {
+      return <String, dynamic>{};
+    } on MissingPluginException {
+      return <String, dynamic>{};
+    }
+  }
+
+  /// One of 'direct' / 'mixed' / 'unknown' - a real, honest per-file/
+  /// per-device query via AudioManager.getDirectPlaybackSupport(), never a
+  /// blanket "Hi-Res active" claim.
+  Future<String> getHiResSupport(String sourcePath) async {
+    try {
+      final String? support = await _method.invokeMethod<String>(
+        'getHiResSupport',
+        <String, dynamic>{'sourcePath': sourcePath},
+      );
+      return support ?? 'unknown';
+    } on PlatformException {
+      return 'unknown';
+    } on MissingPluginException {
+      return 'unknown';
+    }
+  }
+
+  /// One of 'speaker' / 'wired' / 'bluetooth' - a best-effort guess at what
+  /// the audio is currently playing through, used to switch between
+  /// per-device EQ profiles. Falls back to 'speaker' if the query fails.
+  Future<String> getOutputBucket() async {
+    try {
+      final String? bucket = await _method.invokeMethod<String>(
+        'getOutputBucket',
+      );
+      return bucket ?? 'speaker';
+    } on PlatformException {
+      return 'speaker';
+    } on MissingPluginException {
+      return 'speaker';
+    }
+  }
+
   Future<AudioFxCaps?> getFxCaps() async {
     try {
       final dynamic raw = await _method.invokeMethod<dynamic>('getFxCaps');

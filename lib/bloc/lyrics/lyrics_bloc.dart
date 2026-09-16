@@ -264,6 +264,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     try {
       final List<OnlineLyricsCandidate> results = await _onlineLyrics.search(
         song,
+        manualQuery: event.query,
       );
       stateData
         ..onlineSearching = false

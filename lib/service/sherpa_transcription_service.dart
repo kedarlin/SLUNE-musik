@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:typed_data';
 
+import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -71,7 +72,16 @@ class SherpaTranscriptionService implements TranscriptionService {
         final String wavPath = p.join(tempDir.path, 'lyrics_${song.id}.wav');
         tempWavPath = wavPath;
 
-        await _bridge.decodeToWav(sourcePath: song.data, outputPath: wavPath);
+        final bool enhanceVocals =
+            Hive.box<dynamic>(
+                  'settings',
+                ).get('vocalEnhanceEnabled', defaultValue: true)
+                as bool;
+        await _bridge.decodeToWav(
+          sourcePath: song.data,
+          outputPath: wavPath,
+          enhanceVocals: enhanceVocals,
+        );
         if (cancelled) {
           return;
         }

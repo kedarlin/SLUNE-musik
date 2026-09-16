@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:marquee/marquee.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 import '../bloc/lyrics/lyrics_bloc.dart';
@@ -14,6 +13,7 @@ import '../bloc/songs/songs_bloc.dart';
 import '../core/app_constants/app_enums.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_slider_theme.dart';
+import '../widgets/common/scrolling_title.dart';
 import '../widgets/player/player_options_sheet.dart';
 import 'equalizer_sheet.dart';
 import 'lyrics_view.dart';
@@ -343,9 +343,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
           Expanded(
             child: Column(
               children: <Widget>[
-                _ScrollingTitle(
+                ScrollingTitle(
                   text: song?.title ?? 'NA',
                   height: 26.h,
+                  startPadding: 40.w,
                   style: TextStyle(
                     fontSize: 18.sp,
                     fontWeight: FontWeight.w700,
@@ -395,7 +396,7 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 ],
               ),
             ),
-            padding: EdgeInsets.all(0.15.sw),
+            padding: EdgeInsets.all(0.14.sw),
             child: RotationTransition(
               turns: _rotationController,
               child: ClipOval(
@@ -749,55 +750,6 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ScrollingTitle extends StatelessWidget {
-  const _ScrollingTitle({
-    required this.text,
-    required this.style,
-    required this.height,
-  });
-
-  final String text;
-  final TextStyle style;
-  final double height;
-
-  static String _clean(String raw) =>
-      raw.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-  @override
-  Widget build(BuildContext context) {
-    final String display = _clean(text);
-
-    return SizedBox(
-      height: height,
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final TextPainter painter = TextPainter(
-            text: TextSpan(text: display, style: style),
-            maxLines: 1,
-            textDirection: Directionality.of(context),
-            textScaler: MediaQuery.textScalerOf(context),
-          )..layout();
-
-          if (painter.width <= constraints.maxWidth) {
-            return Center(child: Text(display, style: style, maxLines: 1));
-          }
-
-          return Marquee(
-            text: display,
-            style: style,
-            velocity: 40.0,
-            startAfter: const Duration(seconds: 2),
-            startPadding: 40.w,
-            pauseAfterRound: const Duration(seconds: 1),
-            fadingEdgeStartFraction: 0.12,
-            fadingEdgeEndFraction: 0.12,
-          );
-        },
       ),
     );
   }

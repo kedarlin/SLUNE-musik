@@ -33,6 +33,20 @@ class PlaylistThumbnail extends StatelessWidget {
     size: size,
   );
 
+  factory PlaylistThumbnail.artist({double? size}) => PlaylistThumbnail(
+    icon: Icons.person_rounded,
+    background: PlaylistColors.artistBg,
+    foreground: PlaylistColors.artistIcon,
+    size: size,
+  );
+
+  factory PlaylistThumbnail.folder({double? size}) => PlaylistThumbnail(
+    icon: Icons.folder_rounded,
+    background: PlaylistColors.folderBg,
+    foreground: PlaylistColors.folderIcon,
+    size: size,
+  );
+
   final IconData icon;
   final Color background;
   final Color foreground;

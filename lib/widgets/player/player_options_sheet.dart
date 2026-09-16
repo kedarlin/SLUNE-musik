@@ -175,7 +175,8 @@ class PlayerOptionsSheet {
     BuildContext context,
     MusicControllerBloc musicBloc,
   ) {
-    const List<int> presets = <int>[15, 30, 45, 60];
+    const List<int> durationPresets = <int>[15, 30, 45, 60];
+    const List<int> songCountPresets = <int>[1, 2, 3, 5, 10];
 
     showDialog<void>(
       context: context,
@@ -187,10 +188,12 @@ class PlayerOptionsSheet {
             style: TextStyle(color: AppColors.textPrimary, fontSize: 18.sp),
           ),
           children: <Widget>[
-            for (final int minutes in presets)
+            for (final int minutes in durationPresets)
               SimpleDialogOption(
                 onPressed: () {
-                  musicBloc.add(SetSleepTimer(Duration(minutes: minutes)));
+                  musicBloc.add(
+                    SetSleepTimer(duration: Duration(minutes: minutes)),
+                  );
                   Navigator.of(dialogContext).pop();
                 },
                 child: Text(
@@ -201,9 +204,37 @@ class PlayerOptionsSheet {
                   ),
                 ),
               ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 4.h),
+              child: Divider(color: AppColors.divider, height: 1.h),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Text(
+                'By songs',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ),
+            for (final int count in songCountPresets)
+              SimpleDialogOption(
+                onPressed: () {
+                  musicBloc.add(SetSleepTimer(songCount: count));
+                  Navigator.of(dialogContext).pop();
+                },
+                child: Text(
+                  '$count song${count == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15.sp,
+                  ),
+                ),
+              ),
             SimpleDialogOption(
               onPressed: () {
-                musicBloc.add(SetSleepTimer(null));
+                musicBloc.add(SetSleepTimer());
                 Navigator.of(dialogContext).pop();
               },
               child: Text(

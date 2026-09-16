@@ -41,6 +41,13 @@ class AudioEffectsController {
     private var bassStrength = 0 // 0..1000
     private var virtStrength = 0 // 0..1000
     private var reverbPreset: Short = PresetReverb.PRESET_NONE
+    private var preampMb = 0 // additive offset applied to every band, millibels
+
+    /** True while Hi-Res output mode is active - OS-level audiofx effects
+     *  operate on integer PCM and would reintroduce processing/coloration,
+     *  directly contradicting "bit-perfect", so they're force-disabled
+     *  (not cleared - see [setBypassForHiRes]) while this is true. */
+    private var bypassForHiRes = false
 
     fun onSessionId(id: Int) {
         if (id == C.AUDIO_SESSION_ID_UNSET || id == sessionId) {
@@ -100,32 +107,33 @@ class AudioEffectsController {
             guarded {
                 if (eqPreset in 0 until eq.numberOfPresets) {
                     eq.usePreset(eqPreset.toShort())
+                    applyPreampToCurrentCurve(eq)
                 } else {
                     for ((band, level) in eqBands) {
                         if (band < eq.numberOfBands) {
-                            eq.setBandLevel(band, level)
+                            eq.setBandLevel(band, preampedLevel(eq, level.toInt()))
                         }
                     }
                 }
-                eq.enabled = eqEnabled
+                eq.enabled = eqEnabled && !bypassForHiRes
             }
         }
         bassBoost?.let { bb ->
             guarded {
                 bb.setStrength(bassStrength.toShort())
-                bb.enabled = bassStrength > 0
+                bb.enabled = bassStrength > 0 && !bypassForHiRes
             }
         }
         virtualizer?.let { v ->
             guarded {
                 v.setStrength(virtStrength.toShort())
-                v.enabled = virtStrength > 0
+                v.enabled = virtStrength > 0 && !bypassForHiRes
             }
         }
         reverb?.let { rv ->
             guarded {
                 rv.preset = reverbPreset
-                rv.enabled = reverbPreset != PresetReverb.PRESET_NONE
+                rv.enabled = reverbPreset != PresetReverb.PRESET_NONE && !bypassForHiRes
             }
         }
     }
@@ -137,8 +145,30 @@ class AudioEffectsController {
         equalizer?.let { eq -> guarded { eq.enabled = enabled } }
     }
 
+    /**
+     * [baseLevel] is the "logical" band value the UI slider shows (before
+     * preamp) - this returns what should actually be sent to the device,
+     * with [preampMb] added and clamped to the real supported range so a
+     * heavy preamp boost near the edge of the range doesn't silently fail.
+     */
+    private fun preampedLevel(eq: Equalizer, baseLevel: Int): Short {
+        val range = eq.bandLevelRange
+        return (baseLevel + preampMb).coerceIn(range[0].toInt(), range[1].toInt()).toShort()
+    }
+
+    /** Re-reads whatever curve is currently active (e.g. right after
+     *  [Equalizer.usePreset]) and re-applies it with [preampMb] layered on
+     *  top - a preset's own baked-in levels are the "base" here. */
+    private fun applyPreampToCurrentCurve(eq: Equalizer) {
+        val baseLevels = IntArray(eq.numberOfBands.toInt()) { eq.getBandLevel(it.toShort()).toInt() }
+        for (band in baseLevels.indices) {
+            eq.setBandLevel(band.toShort(), preampedLevel(eq, baseLevels[band]))
+        }
+    }
+
     /** Applies a device preset and returns the resulting per-band curve
-     *  (millibels) so the UI sliders can follow it. Empty if unavailable. */
+     *  (millibels, pre-preamp) so the UI sliders can follow it. Empty if
+     *  unavailable. */
     fun setEqPreset(preset: Int): IntArray {
         eqPreset = preset
         eqBands.clear()
@@ -146,12 +176,34 @@ class AudioEffectsController {
         return try {
             if (preset in 0 until eq.numberOfPresets) {
                 eq.usePreset(preset.toShort())
+            }
+            val baseLevels =
+                IntArray(eq.numberOfBands.toInt()) { eq.getBandLevel(it.toShort()).toInt() }
+            if (preset in 0 until eq.numberOfPresets) {
+                applyPreampToCurrentCurve(eq)
                 eq.enabled = eqEnabled
             }
-            IntArray(eq.numberOfBands.toInt()) { eq.getBandLevel(it.toShort()).toInt() }
+            baseLevels
         } catch (error: Exception) {
             Log.w(TAG, "eq preset failed: ${error.message}")
             IntArray(0)
+        }
+    }
+
+    /** [strength] is -1200..1200 millibels, added on top of every band. */
+    fun setPreamp(mb: Int) {
+        preampMb = mb.coerceIn(-1200, 1200)
+        val eq = equalizer ?: return
+        guarded {
+            if (eqPreset in 0 until eq.numberOfPresets) {
+                applyPreampToCurrentCurve(eq)
+            } else {
+                for ((band, level) in eqBands) {
+                    if (band < eq.numberOfBands) {
+                        eq.setBandLevel(band, preampedLevel(eq, level.toInt()))
+                    }
+                }
+            }
         }
     }
 
@@ -161,7 +213,7 @@ class AudioEffectsController {
         val eq = equalizer ?: return
         guarded {
             if (band < eq.numberOfBands) {
-                eq.setBandLevel(band.toShort(), levelMb.toShort())
+                eq.setBandLevel(band.toShort(), preampedLevel(eq, levelMb))
                 eq.enabled = eqEnabled
             }
         }
@@ -233,6 +285,22 @@ class AudioEffectsController {
         )
         out.putBoolean("reverbAvailable", reverb != null)
         return out
+    }
+
+    /** Force-disables every effect while [bypass] is true, without clearing
+     *  any stored value - turning it back off restores exactly what was
+     *  active before via [applyAll]. */
+    fun setBypassForHiRes(bypass: Boolean) {
+        if (bypassForHiRes == bypass) return
+        bypassForHiRes = bypass
+        if (bypass) {
+            guarded { equalizer?.enabled = false }
+            guarded { bassBoost?.enabled = false }
+            guarded { virtualizer?.enabled = false }
+            guarded { reverb?.enabled = false }
+        } else {
+            applyAll()
+        }
     }
 
     fun release() {

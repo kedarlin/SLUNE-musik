@@ -16,15 +16,25 @@ class OnlineLyricsService {
 
   static const String _baseUrl = 'https://lrclib.net/api/search';
 
-  Future<List<OnlineLyricsCandidate>> search(SongModel song) async {
+  /// [manualQuery], when non-empty, replaces the song's own title/artist
+  /// with a free-text search (LRCLIB's `q` param, matched against title,
+  /// artist and album) - lets the user find lyrics for a file whose
+  /// metadata didn't parse into a sensible title/artist on its own.
+  Future<List<OnlineLyricsCandidate>> search(
+    SongModel song, {
+    String? manualQuery,
+  }) async {
+    final String trimmedQuery = (manualQuery ?? '').trim();
     try {
       final Response<dynamic> response = await _dio.get<dynamic>(
         _baseUrl,
-        queryParameters: <String, dynamic>{
-          'track_name': song.title,
-          if (_knownArtist(song.artist) != null)
-            'artist_name': _knownArtist(song.artist),
-        },
+        queryParameters: trimmedQuery.isNotEmpty
+            ? <String, dynamic>{'q': trimmedQuery}
+            : <String, dynamic>{
+                'track_name': song.title,
+                if (_knownArtist(song.artist) != null)
+                  'artist_name': _knownArtist(song.artist),
+              },
       );
       final List<dynamic> raw =
           (response.data as List<dynamic>?) ?? const <dynamic>[];

@@ -23,12 +23,23 @@ class MusicControllerStateData extends MusicControllerState {
   int virtualizer = 0;
   ReverbPreset reverbPreset = ReverbPreset.none;
 
+  int crossfadeMs = 0;
+  bool resumeOnBluetoothEnabled = false;
+
+  String outputBucket = 'speaker';
+
+  int preampMb = 0;
+  bool monoEnabled = false;
+  bool hiResEnabled = false;
+  bool seekButtonsEnabled = false;
+
   SongModel? song;
   int index = 0;
 
   List<SongModel> queue = <SongModel>[];
 
   DateTime? sleepTimerEndsAt;
+  int? sleepTimerSongsRemaining;
 
   int? abLoopAMs;
   int? abLoopBMs;

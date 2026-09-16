@@ -72,6 +72,36 @@ class ReverbPresetChanged extends MusicControllerEvent {
   final ReverbPreset preset;
 }
 
+class CrossfadeChanged extends MusicControllerEvent {
+  CrossfadeChanged(this.ms);
+  final int ms;
+}
+
+class ResumeOnBluetoothChanged extends MusicControllerEvent {
+  ResumeOnBluetoothChanged(this.enabled);
+  final bool enabled;
+}
+
+class PreampChanged extends MusicControllerEvent {
+  PreampChanged(this.mb);
+  final int mb;
+}
+
+class MonoChanged extends MusicControllerEvent {
+  MonoChanged(this.enabled);
+  final bool enabled;
+}
+
+class HiResChanged extends MusicControllerEvent {
+  HiResChanged(this.enabled);
+  final bool enabled;
+}
+
+class SeekButtonsChanged extends MusicControllerEvent {
+  SeekButtonsChanged(this.enabled);
+  final bool enabled;
+}
+
 class EqBandsInitialized extends MusicControllerEvent {
   EqBandsInitialized(this.bandCount);
   final int bandCount;
@@ -117,8 +147,9 @@ class SetAbLoopPointB extends MusicControllerEvent {}
 class ClearAbLoop extends MusicControllerEvent {}
 
 class SetSleepTimer extends MusicControllerEvent {
-  SetSleepTimer(this.duration);
+  SetSleepTimer({this.duration, this.songCount});
   final Duration? duration;
+  final int? songCount;
 }
 
 class _SleepTimerFired extends MusicControllerEvent {}

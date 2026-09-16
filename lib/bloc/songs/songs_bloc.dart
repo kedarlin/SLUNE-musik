@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:on_audio_query/on_audio_query.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/app_constants/app_enums.dart';
+import '../../models/folder_model.dart';
 
 part 'songs_event.dart';
 part 'songs_state.dart';
@@ -71,6 +73,116 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
     });
 
     stateData.songs = working;
+    _computeFolders(working);
+  }
+
+  /// on_audio_query has no folder query type, unlike Album/Artist - folders
+  /// are derived here by grouping each song's own file path.
+  void _computeFolders(List<SongModel> songs) {
+    final Map<String, int> counts = <String, int>{};
+    for (final SongModel s in songs) {
+      final String dir = p.dirname(s.data);
+      counts[dir] = (counts[dir] ?? 0) + 1;
+    }
+
+    final List<FolderModel> folders =
+        counts.entries
+            .map(
+              (MapEntry<String, int> e) => FolderModel(
+                path: e.key,
+                name: p.basename(e.key),
+                songCount: e.value,
+              ),
+            )
+            .toList()
+          ..sort(
+            (FolderModel a, FolderModel b) =>
+                a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+
+    stateData.folders = folders;
+  }
+
+  List<SongModel> songsInFolder(String path) => stateData.songs
+      .where((SongModel s) => p.dirname(s.data) == path)
+      .toList();
+
+  // --- Hierarchical folder browsing (opt-in, see Settings) ---------------
+  //
+  // Linear mode (above) flattens every direct-parent directory into one
+  // list. Hierarchical mode instead walks the real nested folder tree,
+  // starting from the deepest directory every song's path has in common -
+  // e.g. if everything lives under /storage/emulated/0/Music/<artist>/<album>,
+  // browsing starts at .../Music rather than at the device's storage root.
+
+  /// The starting point for hierarchical browsing, or null if there are no
+  /// songs to derive one from.
+  String? get folderRoot {
+    if (stateData.songs.isEmpty) {
+      return null;
+    }
+    final List<List<String>> allSegments = stateData.songs
+        .map((SongModel s) => p.split(p.dirname(s.data)))
+        .toList();
+    final int minLength = allSegments
+        .map((List<String> e) => e.length)
+        .reduce((int a, int b) => a < b ? a : b);
+
+    final List<String> common = <String>[];
+    for (int i = 0; i < minLength; i++) {
+      final String segment = allSegments.first[i];
+      if (allSegments.every((List<String> s) => s[i] == segment)) {
+        common.add(segment);
+      } else {
+        break;
+      }
+    }
+    return common.isEmpty ? null : p.joinAll(common);
+  }
+
+  /// Segments of [path] below [base], or empty if [path] isn't under [base].
+  List<String> _segmentsBelow(String path, String base) {
+    if (path == base) {
+      return <String>[];
+    }
+    final String prefix = base.endsWith(p.separator)
+        ? base
+        : '$base${p.separator}';
+    if (!path.startsWith(prefix)) {
+      return <String>[];
+    }
+    return p.split(path.substring(prefix.length));
+  }
+
+  /// Immediate subfolders of [path] that contain at least one song
+  /// somewhere beneath them (folders with no music are never shown).
+  List<FolderModel> subfoldersOf(String path) {
+    final Map<String, int> counts = <String, int>{};
+    for (final SongModel s in stateData.songs) {
+      final String dir = p.dirname(s.data);
+      final List<String> segments = _segmentsBelow(dir, path);
+      if (segments.isEmpty) {
+        continue; // song is directly in `path`, not a subfolder
+      }
+      final String childPath = p.join(path, segments.first);
+      counts[childPath] = (counts[childPath] ?? 0) + 1;
+    }
+
+    final List<FolderModel> result =
+        counts.entries
+            .map(
+              (MapEntry<String, int> e) => FolderModel(
+                path: e.key,
+                name: p.basename(e.key),
+                songCount: e.value,
+              ),
+            )
+            .toList()
+          ..sort(
+            (FolderModel a, FolderModel b) =>
+                a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+    return result;
   }
 
   Future<void> _applySongSort(
@@ -116,6 +228,13 @@ class SongsBloc extends Bloc<SongsEvent, SongsState> {
 
     _allSongs = fetched;
     _applySortAndFilter();
+
+    try {
+      stateData.albums = await _audioQuery.queryAlbums();
+      stateData.artists = await _audioQuery.queryArtists();
+    } catch (_) {
+      // Non-fatal: the Tracks/Playlists/Favourites tabs work without these.
+    }
 
     emit(stateData);
 

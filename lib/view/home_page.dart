@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/app_constants/app_enums.dart';
+import '../core/routes/app_routes.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
 import '../service/battery_optimization_helper.dart';
+import '../widgets/common/scrolling_title.dart';
+import 'albums_page.dart';
+import 'artists_page.dart';
 import 'audio_songs_page.dart';
 import 'favourite_songs_page.dart';
+import 'folders_page.dart';
 import 'playing_queue_sheet.dart';
 import 'playlists_page.dart';
 
@@ -58,6 +64,16 @@ class _HomePageState extends State<HomePage>
             ),
           ),
           backgroundColor: AppColors.background,
+          actions: <Widget>[
+            IconButton(
+              onPressed: () => context.push(AppRouter.settings),
+              icon: Icon(
+                Icons.settings_outlined,
+                color: AppColors.textPrimary,
+                size: 24.sp,
+              ),
+            ),
+          ],
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(36.h),
             child: TabBar(
@@ -94,6 +110,9 @@ class _HomePageState extends State<HomePage>
             AllSongsPage(),
             PlaylistsPage(),
             FavouriteSongsPage(),
+            AlbumsPage(),
+            ArtistsPage(),
+            FoldersPage(),
           ],
         ),
         bottomNavigationBar:
@@ -120,7 +139,7 @@ class _HomePageState extends State<HomePage>
                     );
                   },
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(12.w, 4, 8.w, 16.h),
+                    padding: EdgeInsets.fromLTRB(8.w, 0, 8.w, 16.h),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(32.r),
                       onTap: () {
@@ -133,7 +152,7 @@ class _HomePageState extends State<HomePage>
                       child: Container(
                         height: 48.h,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: AppColors.vinylEdge,
                           borderRadius: BorderRadius.only(
                             topRight: Radius.circular(32.r),
                             bottomRight: Radius.circular(32.r),
@@ -159,7 +178,7 @@ class _HomePageState extends State<HomePage>
                                       decoration: BoxDecoration(
                                         color: AppColors.iconBg,
                                         borderRadius: BorderRadius.circular(
-                                          8.r,
+                                          4.r,
                                         ),
                                       ),
                                       child: Icon(
@@ -172,14 +191,14 @@ class _HomePageState extends State<HomePage>
                                 ),
                                 SizedBox(width: 12.w),
                                 Expanded(
-                                  child: Text(
-                                    song.title,
+                                  child: ScrollingTitle(
+                                    text: song.title,
+                                    height: 18.h,
+                                    alignment: Alignment.centerLeft,
                                     style: TextStyle(
                                       color: AppColors.textPrimary,
                                       fontSize: 13.sp,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
                                   ),
                                 ),
                                 IconButton(

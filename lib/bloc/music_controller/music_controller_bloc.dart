@@ -29,6 +29,12 @@ class MusicControllerBloc
     on<BassBoostChanged>(_onBassBoostChanged);
     on<VirtualizerChanged>(_onVirtualizerChanged);
     on<ReverbPresetChanged>(_onReverbPresetChanged);
+    on<CrossfadeChanged>(_onCrossfadeChanged);
+    on<ResumeOnBluetoothChanged>(_onResumeOnBluetoothChanged);
+    on<PreampChanged>(_onPreampChanged);
+    on<MonoChanged>(_onMonoChanged);
+    on<HiResChanged>(_onHiResChanged);
+    on<SeekButtonsChanged>(_onSeekButtonsChanged);
     on<EqBandsInitialized>(_onEqBandsInitialized);
     on<PlayerStateReceived>(_onPlayerStateReceived);
     on<ShuffleAll>(_onShuffleAll);
@@ -62,6 +68,12 @@ class MusicControllerBloc
   bool _sessionRestored = false;
   int _lastPersistedPositionMs = 0;
 
+  /// Per-output-device (speaker/wired/bluetooth) EQ+FX profiles, keyed by
+  /// bucket. Additive on top of the existing flat fx* keys (which remain
+  /// the speaker/default profile) - see [_saveCurrentBucketProfile].
+  Map<String, Map<String, dynamic>> _fxProfiles =
+      <String, Map<String, dynamic>>{};
+
   final MusicControllerStateData stateData = MusicControllerStateData();
 
   Box<dynamic> get _settingsBox => Hive.box<dynamic>('settings');
@@ -92,6 +104,104 @@ class MusicControllerBloc
         _settingsBox.get('fxReverb', defaultValue: 0) as int;
     stateData.reverbPreset = ReverbPreset
         .values[reverbIndex.clamp(0, ReverbPreset.values.length - 1)];
+
+    stateData.crossfadeMs =
+        _settingsBox.get('fxCrossfadeMs', defaultValue: 0) as int;
+    stateData.resumeOnBluetoothEnabled =
+        _settingsBox.get('resumeOnBluetoothEnabled', defaultValue: false)
+            as bool;
+    stateData.preampMb = _settingsBox.get('fxPreampMb', defaultValue: 0) as int;
+    stateData.monoEnabled =
+        _settingsBox.get('fxMonoEnabled', defaultValue: false) as bool;
+    stateData.hiResEnabled =
+        _settingsBox.get('fxHiResEnabled', defaultValue: false) as bool;
+    stateData.seekButtonsEnabled =
+        _settingsBox.get('seekButtonsEnabled', defaultValue: false) as bool;
+
+    final Map<dynamic, dynamic> rawProfiles =
+        _settingsBox.get('fxProfiles', defaultValue: <dynamic, dynamic>{})
+            as Map<dynamic, dynamic>;
+    _fxProfiles = rawProfiles.map(
+      (dynamic key, dynamic value) => MapEntry<String, Map<String, dynamic>>(
+        key as String,
+        Map<String, dynamic>.from(value as Map<dynamic, dynamic>),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _captureFxSnapshot() => <String, dynamic>{
+    'eqEnabled': stateData.eqEnabled,
+    'eqPreset': stateData.eqPreset,
+    'eqBands': stateData.eqBands,
+    'customEqBands': stateData.customEqBands,
+    'bassBoost': stateData.bassBoost,
+    'virtualizer': stateData.virtualizer,
+    'reverbIndex': stateData.reverbPreset.index,
+  };
+
+  void _applyFxSnapshotToStateData(Map<String, dynamic> profile) {
+    stateData.eqEnabled = profile['eqEnabled'] as bool? ?? false;
+    stateData.eqPreset = profile['eqPreset'] as int? ?? -1;
+    stateData.eqBands = List<int>.from(
+      profile['eqBands'] as List<dynamic>? ?? <int>[],
+    );
+    stateData.customEqBands = List<int>.from(
+      profile['customEqBands'] as List<dynamic>? ?? <int>[],
+    );
+    stateData.bassBoost = profile['bassBoost'] as int? ?? 0;
+    stateData.virtualizer = profile['virtualizer'] as int? ?? 0;
+    final int reverbIndex = profile['reverbIndex'] as int? ?? 0;
+    stateData.reverbPreset = ReverbPreset
+        .values[reverbIndex.clamp(0, ReverbPreset.values.length - 1)];
+  }
+
+  /// Unconditionally pushes every FX value to the player - unlike
+  /// [_applyAudioFx]'s cold-start push (which skips default-value calls as
+  /// a minor optimization), a bucket switch must actively turn OFF values
+  /// the new profile doesn't have, not just skip turning them on.
+  Future<void> _pushFxToPlayer() async {
+    await _player.setEqEnabled(stateData.eqEnabled);
+    if (stateData.eqEnabled) {
+      if (stateData.eqPreset >= 0) {
+        await _player.setEqPreset(stateData.eqPreset);
+      } else {
+        for (int band = 0; band < stateData.eqBands.length; band++) {
+          await _player.setEqBand(band, stateData.eqBands[band]);
+        }
+      }
+    }
+    await _player.setBassBoost(stateData.bassBoost);
+    await _player.setVirtualizer(stateData.virtualizer);
+    await _player.setReverb(stateData.reverbPreset.index);
+  }
+
+  /// Saves the currently-active FX values as the profile for whichever
+  /// bucket is active right now, so switching away and back (or editing
+  /// while on a given output) doesn't lose device-specific tuning.
+  Future<void> _saveCurrentBucketProfile() async {
+    _fxProfiles[stateData.outputBucket] = _captureFxSnapshot();
+    await _settingsBox.put('fxProfiles', _fxProfiles);
+  }
+
+  /// Checked on song init and on every track change - if the detected
+  /// output device bucket changed, saves whatever was active under the
+  /// bucket being left and loads the new bucket's saved profile (if any).
+  /// A bucket with no saved profile yet just keeps whatever's already
+  /// active, rather than jarringly resetting to flat/off.
+  Future<void> _checkOutputBucket() async {
+    final String bucket = await _player.getOutputBucket();
+    if (bucket == stateData.outputBucket) {
+      return;
+    }
+
+    await _saveCurrentBucketProfile();
+    stateData.outputBucket = bucket;
+
+    final Map<String, dynamic>? profile = _fxProfiles[bucket];
+    if (profile != null) {
+      _applyFxSnapshotToStateData(profile);
+      await _pushFxToPlayer();
+    }
   }
 
   Future<void> _applyAudioFx() async {
@@ -121,7 +231,31 @@ class MusicControllerBloc
     if (stateData.reverbPreset != ReverbPreset.none) {
       await _player.setReverb(stateData.reverbPreset.index);
     }
+    if (stateData.crossfadeMs > 0) {
+      await _player.setCrossfade(_effectiveCrossfadeMs);
+    }
+    if (stateData.resumeOnBluetoothEnabled) {
+      await _player.setResumeOnBluetooth(true);
+    }
+    if (stateData.preampMb != 0) {
+      await _player.setPreamp(stateData.preampMb);
+    }
+    if (stateData.monoEnabled) {
+      await _player.setMono(true);
+    }
+    if (stateData.hiResEnabled) {
+      await _player.setHiRes(true);
+    }
+    if (stateData.seekButtonsEnabled) {
+      await _player.setSeekButtons(true);
+    }
   }
+
+  /// A-B loop replays a slice of the *same* track, so there is never a
+  /// "next track" to crossfade into - suppress it natively while a loop is
+  /// active rather than let CrossfadeController try and silently no-op.
+  int get _effectiveCrossfadeMs =>
+      stateData.hasAbLoop ? 0 : stateData.crossfadeMs;
 
   void _scheduleSessionRestore() {
     if (songsBloc.stateData.songs.isNotEmpty) {
@@ -235,6 +369,7 @@ class MusicControllerBloc
 
     await _player.setQueue(songs: stateData.queue, startIndex: stateData.index);
     await _applyAudioFx();
+    await _checkOutputBucket();
 
     if (stateData.song != null) {
       songsBloc.add(RecordRecentlyPlayed(stateData.song!.id));
@@ -276,6 +411,17 @@ class MusicControllerBloc
     if (stateData.index != previousIndex) {
       stateData.abLoopAMs = null;
       stateData.abLoopBMs = null;
+      await _syncCrossfadeForAbLoop();
+      await _checkOutputBucket();
+
+      if (stateData.sleepTimerSongsRemaining != null) {
+        final int remaining = stateData.sleepTimerSongsRemaining! - 1;
+        if (remaining <= 0) {
+          add(_SleepTimerFired());
+        } else {
+          stateData.sleepTimerSongsRemaining = remaining;
+        }
+      }
     } else if (stateData.hasAbLoop &&
         stateData.position >= stateData.abLoopBMs!) {
       await _player.seekTo(Duration(milliseconds: stateData.abLoopAMs!));
@@ -431,6 +577,7 @@ class MusicControllerBloc
       }
     }
     await _settingsBox.put('fxEqEnabled', event.enabled);
+    await _saveCurrentBucketProfile();
     emit(stateData);
   }
 
@@ -444,6 +591,7 @@ class MusicControllerBloc
     }
     await _settingsBox.put('fxEqPreset', event.preset);
     await _settingsBox.put('fxEqBands', stateData.eqBands);
+    await _saveCurrentBucketProfile();
     emit(stateData);
   }
 
@@ -467,6 +615,7 @@ class MusicControllerBloc
     await _settingsBox.put('fxEqPreset', -1);
     await _settingsBox.put('fxEqBands', stateData.eqBands);
     await _settingsBox.put('fxCustomEqBands', stateData.customEqBands);
+    await _saveCurrentBucketProfile();
     emit(stateData);
   }
 
@@ -477,6 +626,7 @@ class MusicControllerBloc
     stateData.bassBoost = event.strength.clamp(0, 1000);
     await _player.setBassBoost(stateData.bassBoost);
     await _settingsBox.put('fxBass', stateData.bassBoost);
+    await _saveCurrentBucketProfile();
     emit(stateData);
   }
 
@@ -487,6 +637,7 @@ class MusicControllerBloc
     stateData.virtualizer = event.strength.clamp(0, 1000);
     await _player.setVirtualizer(stateData.virtualizer);
     await _settingsBox.put('fxVirt', stateData.virtualizer);
+    await _saveCurrentBucketProfile();
     emit(stateData);
   }
 
@@ -497,6 +648,67 @@ class MusicControllerBloc
     stateData.reverbPreset = event.preset;
     await _player.setReverb(event.preset.index);
     await _settingsBox.put('fxReverb', event.preset.index);
+    await _saveCurrentBucketProfile();
+    emit(stateData);
+  }
+
+  Future<void> _onCrossfadeChanged(
+    CrossfadeChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.crossfadeMs = event.ms.clamp(0, 12000);
+    await _player.setCrossfade(_effectiveCrossfadeMs);
+    await _settingsBox.put('fxCrossfadeMs', stateData.crossfadeMs);
+    emit(stateData);
+  }
+
+  Future<void> _onResumeOnBluetoothChanged(
+    ResumeOnBluetoothChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.resumeOnBluetoothEnabled = event.enabled;
+    await _player.setResumeOnBluetooth(event.enabled);
+    await _settingsBox.put('resumeOnBluetoothEnabled', event.enabled);
+    emit(stateData);
+  }
+
+  Future<void> _onPreampChanged(
+    PreampChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.preampMb = event.mb.clamp(-1200, 1200);
+    await _player.setPreamp(stateData.preampMb);
+    await _settingsBox.put('fxPreampMb', stateData.preampMb);
+    emit(stateData);
+  }
+
+  Future<void> _onMonoChanged(
+    MonoChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.monoEnabled = event.enabled;
+    await _player.setMono(event.enabled);
+    await _settingsBox.put('fxMonoEnabled', event.enabled);
+    emit(stateData);
+  }
+
+  Future<void> _onHiResChanged(
+    HiResChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.hiResEnabled = event.enabled;
+    await _player.setHiRes(event.enabled);
+    await _settingsBox.put('fxHiResEnabled', event.enabled);
+    emit(stateData);
+  }
+
+  Future<void> _onSeekButtonsChanged(
+    SeekButtonsChanged event,
+    Emitter<MusicControllerState> emit,
+  ) async {
+    stateData.seekButtonsEnabled = event.enabled;
+    await _player.setSeekButtons(event.enabled);
+    await _settingsBox.put('seekButtonsEnabled', event.enabled);
     emit(stateData);
   }
 
@@ -654,6 +866,7 @@ class MusicControllerBloc
         stateData.abLoopBMs! <= stateData.abLoopAMs!) {
       stateData.abLoopBMs = null;
     }
+    await _syncCrossfadeForAbLoop();
     emit(stateData);
   }
 
@@ -666,7 +879,18 @@ class MusicControllerBloc
         stateData.abLoopAMs! >= stateData.abLoopBMs!) {
       stateData.abLoopAMs = null;
     }
+    await _syncCrossfadeForAbLoop();
     emit(stateData);
+  }
+
+  /// A-B loop replays a slice of the current track, so crossfade (which
+  /// only ever fires on a natural end-of-track transition) is suppressed
+  /// natively while a loop is active, and restored once it clears.
+  Future<void> _syncCrossfadeForAbLoop() async {
+    if (stateData.crossfadeMs <= 0) {
+      return;
+    }
+    await _player.setCrossfade(_effectiveCrossfadeMs);
   }
 
   Future<void> _onClearAbLoop(
@@ -675,6 +899,7 @@ class MusicControllerBloc
   ) async {
     stateData.abLoopAMs = null;
     stateData.abLoopBMs = null;
+    await _syncCrossfadeForAbLoop();
     emit(stateData);
   }
 
@@ -683,17 +908,16 @@ class MusicControllerBloc
     Emitter<MusicControllerState> emit,
   ) async {
     _sleepTimer?.cancel();
+    _sleepTimer = null;
+    stateData.sleepTimerEndsAt = null;
+    stateData.sleepTimerSongsRemaining = null;
 
-    if (event.duration == null) {
-      _sleepTimer = null;
-      stateData.sleepTimerEndsAt = null;
-      emit(stateData);
-      return;
+    if (event.duration != null) {
+      stateData.sleepTimerEndsAt = DateTime.now().add(event.duration!);
+      _sleepTimer = Timer(event.duration!, () => add(_SleepTimerFired()));
+    } else if (event.songCount != null) {
+      stateData.sleepTimerSongsRemaining = event.songCount;
     }
-
-    stateData.sleepTimerEndsAt = DateTime.now().add(event.duration!);
-
-    _sleepTimer = Timer(event.duration!, () => add(_SleepTimerFired()));
 
     emit(stateData);
   }
@@ -705,6 +929,7 @@ class MusicControllerBloc
     await _player.pause();
     stateData.isPlaying = false;
     stateData.sleepTimerEndsAt = null;
+    stateData.sleepTimerSongsRemaining = null;
     emit(stateData);
   }
 

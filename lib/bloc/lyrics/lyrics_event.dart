@@ -16,7 +16,10 @@ class LyricsGenerateRequested extends LyricsEvent {}
 
 class LyricsGenerationCancelled extends LyricsEvent {}
 
-class LyricsOnlineSearchRequested extends LyricsEvent {}
+class LyricsOnlineSearchRequested extends LyricsEvent {
+  LyricsOnlineSearchRequested({this.query});
+  final String? query;
+}
 
 class LyricsOnlineCandidateSelected extends LyricsEvent {
   LyricsOnlineCandidateSelected(this.candidate);

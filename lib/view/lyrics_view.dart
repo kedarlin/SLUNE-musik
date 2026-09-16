@@ -500,10 +500,32 @@ class _LyricsViewState extends State<LyricsView> {
   }
 }
 
-class _OnlineLyricsSheet extends StatelessWidget {
+class _OnlineLyricsSheet extends StatefulWidget {
   const _OnlineLyricsSheet({required this.lyricsBloc});
 
   final LyricsBloc lyricsBloc;
+
+  @override
+  State<_OnlineLyricsSheet> createState() => _OnlineLyricsSheetState();
+}
+
+class _OnlineLyricsSheetState extends State<_OnlineLyricsSheet> {
+  late final TextEditingController _searchController = TextEditingController(
+    text: widget.lyricsBloc.stateData.song?.title ?? '',
+  );
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _search() {
+    final String query = _searchController.text.trim();
+    widget.lyricsBloc.add(
+      LyricsOnlineSearchRequested(query: query.isEmpty ? null : query),
+    );
+  }
 
   String _formatDuration(int seconds) {
     final int m = seconds ~/ 60;
@@ -516,9 +538,9 @@ class _OnlineLyricsSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: BlocBuilder<LyricsBloc, LyricsState>(
-        bloc: lyricsBloc,
+        bloc: widget.lyricsBloc,
         builder: (BuildContext context, LyricsState state) {
-          final LyricsStateData data = lyricsBloc.stateData;
+          final LyricsStateData data = widget.lyricsBloc.stateData;
           return SheetShell(
             header: Column(
               mainAxisSize: MainAxisSize.min,
@@ -546,18 +568,57 @@ class _OnlineLyricsSheet extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (!data.onlineSearching)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () =>
-                              lyricsBloc.add(LyricsOnlineSearchRequested()),
-                          icon: Icon(
-                            Icons.refresh_rounded,
-                            size: 20.sp,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
                     ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
+                  child: TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _search(),
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 14.sp,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Search by title or artist…',
+                      hintStyle: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14.sp,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.surface,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14.w,
+                        vertical: 12.h,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: data.onlineSearching
+                          ? Padding(
+                              padding: EdgeInsets.all(12.w),
+                              child: SizedBox(
+                                width: 16.w,
+                                height: 16.w,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              visualDensity: VisualDensity.compact,
+                              onPressed: _search,
+                              icon: Icon(
+                                Icons.search_rounded,
+                                size: 22.sp,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
               ],
@@ -631,7 +692,7 @@ class _OnlineLyricsSheet extends StatelessWidget {
         return ListTile(
           enabled: candidate.hasAny,
           onTap: () {
-            lyricsBloc.add(LyricsOnlineCandidateSelected(candidate));
+            widget.lyricsBloc.add(LyricsOnlineCandidateSelected(candidate));
             Navigator.of(context).pop();
           },
           title: Text(

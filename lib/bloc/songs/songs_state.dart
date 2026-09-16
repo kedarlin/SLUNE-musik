@@ -12,6 +12,10 @@ class SongsStateData extends SongsState {
 
   List<SongModel> recentlyPlayed = <SongModel>[];
 
+  List<AlbumModel> albums = <AlbumModel>[];
+  List<ArtistModel> artists = <ArtistModel>[];
+  List<FolderModel> folders = <FolderModel>[];
+
   Map<int, SongModel> songById = <int, SongModel>{};
 
   SongSortField sortField = SongSortField.date;
