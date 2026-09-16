@@ -9,7 +9,6 @@ import '../core/app_constants/app_enums.dart';
 import '../core/routes/app_routes.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
-import '../service/battery_optimization_helper.dart';
 import '../widgets/common/scrolling_title.dart';
 import 'albums_page.dart';
 import 'artists_page.dart';
@@ -39,12 +38,6 @@ class _HomePageState extends State<HomePage>
     super.initState();
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
     _tabController = TabController(length: Tabs.values.length, vsync: this);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        BatteryOptimizationHelper.promptForBackgroundReliability(context);
-      }
-    });
   }
 
   @override
