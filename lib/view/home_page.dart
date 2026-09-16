@@ -14,7 +14,6 @@ import '../widgets/common/scrolling_title.dart';
 import 'albums_page.dart';
 import 'artists_page.dart';
 import 'audio_songs_page.dart';
-import 'favourite_songs_page.dart';
 import 'folders_page.dart';
 import 'playing_queue_sheet.dart';
 import 'playlists_page.dart';
@@ -109,7 +108,6 @@ class _HomePageState extends State<HomePage>
           children: const <Widget>[
             AllSongsPage(),
             PlaylistsPage(),
-            FavouriteSongsPage(),
             AlbumsPage(),
             ArtistsPage(),
             FoldersPage(),

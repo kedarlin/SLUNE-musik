@@ -1,4 +1,4 @@
-enum Tabs { tracks, playlists, favorite, albums, artists, folders }
+enum Tabs { tracks, playlists, albums, artists, folders }
 
 enum RepeatMode { off, one, all }
 
