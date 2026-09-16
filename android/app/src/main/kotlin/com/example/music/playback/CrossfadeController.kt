@@ -111,7 +111,15 @@ class CrossfadeController(private val context: Context, private val primary: Exo
         suppressCancelOnPause = true
         guarded {
             primary.pause()
-            primary.seekToNextMediaItem()
+            // primary keeps playing (fading out) during the ramp, so it can
+            // reach the track's real end - and auto-advance on its own -
+            // before this timer-driven ramp finishes. Only step it forward
+            // ourselves if it's still on the item we armed for; otherwise
+            // seekToNextMediaItem() here would skip past the very item the
+            // shadow player is bridging into.
+            if (primary.currentMediaItemIndex == armedForIndex) {
+                primary.seekToNextMediaItem()
+            }
             primary.seekTo(handoffPositionMs)
             primary.volume = 1f
             primary.playWhenReady = true
