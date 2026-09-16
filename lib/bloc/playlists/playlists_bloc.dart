@@ -15,6 +15,7 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
     on<AddSongToPlaylist>(_addSongToPlaylist);
     on<RemoveSongFromPlaylist>(_removeSongFromPlaylist);
     on<ReorderSongsInPlaylist>(_reorderSongsInPlaylist);
+    on<SetPlaylistPinnedSpeed>(_setPlaylistPinnedSpeed);
   }
 
   final PlaylistsStateData stateData = PlaylistsStateData();
@@ -139,6 +140,24 @@ class PlaylistsBloc extends Bloc<PlaylistsEvent, PlaylistsState> {
 
     final int songId = playlist.songIds.removeAt(event.oldIndex);
     playlist.songIds.insert(newIndex, songId);
+
+    await _box.put(event.playlistId, playlist.toMap());
+
+    add(LoadPlaylists(force: true));
+  }
+
+  Future<void> _setPlaylistPinnedSpeed(
+    SetPlaylistPinnedSpeed event,
+    Emitter<PlaylistsState> emit,
+  ) async {
+    final Map<dynamic, dynamic>? map = _box.get(event.playlistId);
+
+    if (map == null) {
+      return;
+    }
+
+    final Playlist playlist = Playlist.fromMap(map)
+      ..pinnedSpeed = event.speed;
 
     await _box.put(event.playlistId, playlist.toMap());
 

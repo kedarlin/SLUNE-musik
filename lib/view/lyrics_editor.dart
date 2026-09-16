@@ -91,7 +91,10 @@ class _LyricsEditorPageState extends State<LyricsEditorPage> {
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        backgroundColor: AppColors.surfaceHigh,
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.r),
+        ),
         title: Text(
           'Paste lyrics',
           style: TextStyle(color: AppColors.textPrimary, fontSize: 16.sp),

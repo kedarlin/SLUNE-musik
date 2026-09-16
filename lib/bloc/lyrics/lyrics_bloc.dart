@@ -26,6 +26,8 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
        super(LyricsInitial()) {
     on<LyricsSongChanged>(_onSongChanged);
     on<LyricsTicked>(_onTicked);
+    on<LyricsOffsetAdjusted>(_onOffsetAdjusted);
+    on<LyricsOffsetReset>(_onOffsetReset);
     on<LyricsGenerateRequested>(_onGenerateRequested);
     on<LyricsGenerationCancelled>(_onGenerationCancelled);
     on<LyricsOnlineSearchRequested>(_onOnlineSearchRequested);
@@ -64,8 +66,44 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
     }
     if (stateData.status == LyricsStatus.present &&
         (stateData.lyrics?.synced ?? false)) {
-      add(LyricsTicked(Duration(milliseconds: _musicBloc.stateData.position)));
+      add(
+        LyricsTicked(
+          Duration(
+            milliseconds: _musicBloc.stateData.position + stateData.offsetMs,
+          ),
+        ),
+      );
     }
+  }
+
+  Future<void> _onOffsetAdjusted(
+    LyricsOffsetAdjusted event,
+    Emitter<LyricsState> emit,
+  ) async {
+    stateData.offsetMs += event.deltaMs;
+    final Lyrics? lyrics = stateData.lyrics;
+    if (lyrics != null && lyrics.synced) {
+      stateData.activeLine = lyrics.activeIndexAt(
+        Duration(
+          milliseconds: _musicBloc.stateData.position + stateData.offsetMs,
+        ),
+      );
+    }
+    emit(stateData);
+  }
+
+  Future<void> _onOffsetReset(
+    LyricsOffsetReset event,
+    Emitter<LyricsState> emit,
+  ) async {
+    stateData.offsetMs = 0;
+    final Lyrics? lyrics = stateData.lyrics;
+    if (lyrics != null && lyrics.synced) {
+      stateData.activeLine = lyrics.activeIndexAt(
+        Duration(milliseconds: _musicBloc.stateData.position),
+      );
+    }
+    emit(stateData);
   }
 
   Future<void> _onSongChanged(
@@ -80,6 +118,7 @@ class LyricsBloc extends Bloc<LyricsEvent, LyricsState> {
       ..song = event.song
       ..lyrics = null
       ..activeLine = -1
+      ..offsetMs = 0
       ..progress = null
       ..phase = ''
       ..errorMessage = null

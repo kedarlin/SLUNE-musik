@@ -14,8 +14,20 @@ class AppColors {
 
   static const Color disabled = Color(0xFF4A4A4E);
 
+  static const Color loop = Color(0xFFF0A500);
+  static const Color destructive = Color(0xFFE0433F);
+
   static const Color iconBg = Color(0xFFF5E9FF);
   static const Color iconColor = Color(0xFFB85FFF);
+
+  static const Color badgeCyanBg = Color(0xFFDCEFF5);
+  static const Color badgeCyanIcon = Color(0xFF2A9DBF);
+  static const Color badgePinkBg = Color(0xFFFDE6EC);
+  static const Color badgePinkIcon = Color(0xFFE05A87);
+  static const Color badgeTanBg = Color(0xFFEFEAD8);
+  static const Color badgeTanIcon = Color(0xFFB08D3E);
+  static const Color badgeGoldBg = Color(0xFFE4D6A7);
+  static const Color badgeGoldIcon = Color(0xFFF0A500);
 
   static const Color vinylEdge = Color(0xFF4A4A4E);
   static const Color vinylGroove = Color(0xFF2A2A2C);

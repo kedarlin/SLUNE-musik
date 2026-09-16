@@ -12,6 +12,13 @@ class LyricsTicked extends LyricsEvent {
   final Duration position;
 }
 
+class LyricsOffsetAdjusted extends LyricsEvent {
+  LyricsOffsetAdjusted(this.deltaMs);
+  final int deltaMs;
+}
+
+class LyricsOffsetReset extends LyricsEvent {}
+
 class LyricsGenerateRequested extends LyricsEvent {}
 
 class LyricsGenerationCancelled extends LyricsEvent {}

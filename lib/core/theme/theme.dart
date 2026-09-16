@@ -26,9 +26,9 @@ final ThemeData themeData = ThemeData(
     inactiveTrackColor: AppColors.divider,
     thumbColor: AppColors.accent,
   ),
-  dialogTheme: const DialogThemeData(backgroundColor: AppColors.surfaceHigh),
+  dialogTheme: const DialogThemeData(backgroundColor: AppColors.surface),
   bottomSheetTheme: const BottomSheetThemeData(
-    backgroundColor: AppColors.surfaceHigh,
+    backgroundColor: AppColors.surface,
   ),
   textTheme: TextTheme(
     titleLarge: TextStyle(

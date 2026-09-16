@@ -39,7 +39,10 @@ class BatteryOptimizationHelper {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: AppColors.surfaceHigh,
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Keep music playing in the background',
             style: TextStyle(color: AppColors.textPrimary),

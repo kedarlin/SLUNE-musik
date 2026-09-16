@@ -74,72 +74,57 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
   Widget build(BuildContext context) {
     final bool eqAvailable = _caps?.eqAvailable ?? false;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceHigh,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      child: _loading
-          ? Padding(
+    return _loading
+        ? Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+            ),
+            child: Padding(
               padding: EdgeInsets.all(20.h),
               child: SizedBox(
                 height: 200.h,
                 child: const Center(child: CircularProgressIndicator()),
               ),
-            )
-          : SheetShell(
-              showDivider: false,
-              header: Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 8.h),
-                child: Center(
-                  child: Container(
-                    width: 36.w,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: AppColors.disabled,
-                      borderRadius: BorderRadius.circular(2.r),
+            ),
+          )
+        : SheetShell(
+            header: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Row(
+                children: <Widget>[
+                  Text(
+                    'Equalizer',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 17.sp,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
+                  const Spacer(),
+                  Switch(
+                    padding: EdgeInsets.zero,
+                    value: _eqEnabled && eqAvailable,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppColors.accent,
+                    inactiveThumbColor: AppColors.textTertiary,
+                    inactiveTrackColor: AppColors.surfaceHigh,
+                    onChanged: eqAvailable
+                        ? (bool v) {
+                            setState(() => _eqEnabled = v);
+                            widget.musicBloc.add(EqEnabledChanged(v));
+                          }
+                        : null,
+                  ),
+                ],
               ),
-              body: Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Text(
-                          'Equalizer',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          _eqEnabled ? 'On' : 'Off',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14.sp,
-                          ),
-                        ),
-                        SizedBox(width: 8.w),
-                        Switch(
-                          padding: EdgeInsets.zero,
-                          value: _eqEnabled && eqAvailable,
-                          onChanged: eqAvailable
-                              ? (bool v) {
-                                  setState(() => _eqEnabled = v);
-                                  widget.musicBloc.add(EqEnabledChanged(v));
-                                }
-                              : null,
-                          activeThumbColor: AppColors.accent,
-                        ),
-                      ],
-                    ),
+            ),
+            body: Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
                     Expanded(
                       child: ListView(
                         children: <Widget>[
@@ -172,8 +157,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                   ],
                 ),
               ),
-            ),
-    );
+            );
   }
 
   Widget _buildEqSection() {
@@ -266,23 +250,28 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
   }) {
     return Padding(
       padding: EdgeInsets.only(right: 8.w),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        showCheckmark: false,
-        selectedColor: AppColors.transparent,
-        backgroundColor: AppColors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16.r)),
-        ),
-        side: BorderSide(
-          width: 0.5.w,
-          color: selected ? AppColors.accent : AppColors.white,
-        ),
-        labelStyle: TextStyle(
-          color: selected ? AppColors.accent : AppColors.textPrimary,
-          fontSize: 13.sp,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16.r),
+        onTap: onTap,
+        child: Container(
+          height: 32.h,
+          padding: EdgeInsets.symmetric(horizontal: 13.w),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.accent.withValues(alpha: 0.16)
+                : AppColors.surfaceHigh,
+            border: selected ? Border.all(color: AppColors.accent) : null,
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? AppColors.accent : AppColors.textSecondary,
+              fontSize: 12.sp,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );
@@ -301,14 +290,22 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
           final int levelMb = band < _bands.length ? _bands[band] : 0;
           final double clamped = levelMb.toDouble().clamp(minMb, maxMb);
 
+          final int db = (levelMb / 100).round();
+
           return Expanded(
             child: Column(
               children: <Widget>[
                 Text(
-                  '${(levelMb / 100).round()} dB',
+                  db > 0 ? '+$db' : '$db',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12.sp,
+                    color: db > 0
+                        ? AppColors.accent
+                        : AppColors.textSecondary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const <FontFeature>[
+                      FontFeature.tabularFigures(),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -350,8 +347,9 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                         : 0,
                   ),
                   style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11.sp,
+                    color: AppColors.textTertiary,
+                    fontSize: 10.5.sp,
+                    fontFamily: 'monospace',
                   ),
                 ),
               ],
@@ -381,48 +379,59 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
           'Reverb',
           style: TextStyle(
             color: available ? AppColors.textPrimary : AppColors.textSecondary,
-            fontSize: 17.sp,
+            fontSize: 13.5.sp,
             fontWeight: FontWeight.w600,
           ),
         ),
         const Spacer(),
-        PopupMenuButton<ReverbPreset>(
-          enabled: available,
-          color: AppColors.surface,
-          onSelected: (ReverbPreset preset) {
-            setState(() => _reverb = preset);
-            widget.musicBloc.add(ReverbPresetChanged(preset));
-          },
-          itemBuilder: (BuildContext context) => ReverbPreset.values
-              .map(
-                (ReverbPreset p) => PopupMenuItem<ReverbPreset>(
-                  value: p,
-                  child: Text(
-                    p.label,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15.sp,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
-          child: Row(
+        if (!available)
+          Text(
+            'Unavailable',
+            style: TextStyle(color: AppColors.textTertiary, fontSize: 12.sp),
+          )
+        else
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                available ? _reverb.label : 'Unavailable',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 15.sp),
-              ),
-              Icon(
-                Icons.arrow_drop_down_rounded,
-                color: AppColors.textPrimary,
-                size: 22.sp,
-              ),
+              for (final ReverbPreset preset in ReverbPreset.values) ...<Widget>[
+                _reverbChip(preset),
+                if (preset != ReverbPreset.values.last) SizedBox(width: 6.w),
+              ],
             ],
           ),
-        ),
       ],
+    );
+  }
+
+  Widget _reverbChip(ReverbPreset preset) {
+    final bool selected = preset == _reverb;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(15.r),
+      onTap: () {
+        setState(() => _reverb = preset);
+        widget.musicBloc.add(ReverbPresetChanged(preset));
+      },
+      child: Container(
+        height: 30.h,
+        padding: EdgeInsets.symmetric(horizontal: 11.w),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withValues(alpha: 0.16)
+              : AppColors.surfaceHigh,
+          border: selected ? Border.all(color: AppColors.accent) : null,
+          borderRadius: BorderRadius.circular(15.r),
+        ),
+        child: Text(
+          preset.label,
+          style: TextStyle(
+            color: selected ? AppColors.accent : AppColors.textSecondary,
+            fontSize: 11.5.sp,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 
@@ -433,39 +442,51 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
     required ValueChanged<int> onChanged,
     required ValueChanged<int> onChangeEnd,
   }) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        SizedBox(
-          width: 96.w,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: available
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
-              fontSize: 15.sp,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Text(
+              label,
+              style: TextStyle(
+                color: available
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontSize: 13.5.sp,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ),
-        Expanded(
-          child: SliderTheme(
-            data: appSliderTheme(inactiveColor: AppColors.divider),
-            child: Slider(
-              max: 1000,
-              value: value.toDouble().clamp(0, 1000),
-              onChanged: available ? (double v) => onChanged(v.round()) : null,
-              onChangeEnd: available
-                  ? (double v) => onChangeEnd(v.round())
-                  : null,
+            Text(
+              '${(value / 10).round()}%',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const <FontFeature>[
+                  FontFeature.tabularFigures(),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-        SizedBox(
-          width: 44.w,
-          child: Text(
-            '${(value / 10).round()}%',
-            textAlign: TextAlign.end,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 3.h,
+            thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8.r),
+            overlayShape: RoundSliderOverlayShape(overlayRadius: 14.r),
+            activeTrackColor: AppColors.accent,
+            inactiveTrackColor: AppColors.surfaceHigh,
+            thumbColor: Colors.white,
+          ),
+          child: Slider(
+            max: 1000,
+            value: value.toDouble().clamp(0, 1000),
+            onChanged: available ? (double v) => onChanged(v.round()) : null,
+            onChangeEnd: available
+                ? (double v) => onChangeEnd(v.round())
+                : null,
           ),
         ),
       ],

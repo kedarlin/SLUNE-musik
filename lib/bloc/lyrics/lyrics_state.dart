@@ -13,6 +13,7 @@ class LyricsStateData extends LyricsState {
   Lyrics? lyrics;
 
   int activeLine = -1;
+  int offsetMs = 0;
 
   double? progress;
   String phase = '';

@@ -18,11 +18,13 @@ class LyricsView extends StatefulWidget {
   const LyricsView({
     required this.lyricsBloc,
     required this.musicBloc,
+    this.onClose,
     super.key,
   });
 
   final LyricsBloc lyricsBloc;
   final MusicControllerBloc musicBloc;
+  final VoidCallback? onClose;
 
   @override
   State<LyricsView> createState() => _LyricsViewState();
@@ -184,40 +186,57 @@ class _LyricsViewState extends State<LyricsView> {
   );
 
   Widget _buildAbsent() {
-    return Center(
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 18.w),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          Icon(
-            Icons.lyrics_outlined,
-            size: 44.sp,
-            color: AppColors.textSecondary,
-          ),
-          SizedBox(height: 14.h),
           Text(
-            'No lyrics for this song',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
+            'Get lyrics',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          SizedBox(height: 18.h),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
-            onPressed: () => widget.lyricsBloc.add(LyricsGenerateRequested()),
-            icon: const Icon(Icons.auto_awesome_rounded),
-            label: const Text('Generate with AI'),
+          SizedBox(height: 16.h),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _SourceChip(
+                  label: 'On-device AI',
+                  selected: true,
+                  onTap: () =>
+                      widget.lyricsBloc.add(LyricsGenerateRequested()),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: _SourceChip(
+                  label: 'Online',
+                  selected: false,
+                  onTap: _openOnlineSearch,
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: _SourceChip(
+                  label: 'Type it',
+                  selected: false,
+                  onTap: () => _openEditor(null),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 10.h),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: AppColors.accent),
-            onPressed: _openOnlineSearch,
-            icon: const Icon(Icons.cloud_outlined),
-            label: const Text('Search Online'),
-          ),
-          SizedBox(height: 8.h),
-          TextButton(
-            onPressed: () => _openEditor(null),
-            child: Text(
-              'Add manually',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 14.sp),
+          SizedBox(height: 20.h),
+          Text(
+            'Runs offline. Transcribes at the original speed, then re-times '
+            'the result to your current playback speed.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: 12.sp,
+              height: 1.5,
             ),
           ),
         ],
@@ -284,36 +303,88 @@ class _LyricsViewState extends State<LyricsView> {
       children: <Widget>[
         SizedBox(height: 12.h),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: Row(
-            children: <Widget>[
-              SizedBox(
-                width: 18.w,
-                height: 18.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.w,
-                  value: data.progress,
+          padding: EdgeInsets.symmetric(horizontal: 18.w),
+          child: Container(
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16.r),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 34.w,
+                      height: 34.w,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: SizedBox(
+                        width: 16.w,
+                        height: 16.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.w,
+                          color: AppColors.accent,
+                          value: data.progress,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Transcribing on device',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 14.5.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            data.phase.isEmpty ? 'Working…' : data.phase,
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          widget.lyricsBloc.add(LyricsGenerationCancelled()),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Text(
-                  data.phase.isEmpty ? 'Generating lyrics…' : data.phase,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13.sp,
+                SizedBox(height: 12.h),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2.r),
+                  child: LinearProgressIndicator(
+                    minHeight: 3.h,
+                    value: data.progress,
+                    backgroundColor: AppColors.surfaceHigh,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.accent,
+                    ),
                   ),
                 ),
-              ),
-              TextButton(
-                onPressed: () =>
-                    widget.lyricsBloc.add(LyricsGenerationCancelled()),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.accent, fontSize: 13.sp),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -330,6 +401,7 @@ class _LyricsViewState extends State<LyricsView> {
       children: <Widget>[
         if (data.isDraft) _buildDraftBanner(data),
         _buildToolbar(data),
+        if (lyrics.synced) _buildOffsetRow(data),
         Expanded(
           child: _fadeEdges(
             child: lyrics.synced
@@ -353,6 +425,55 @@ class _LyricsViewState extends State<LyricsView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOffsetRow(LyricsStateData data) {
+    final double offsetS = data.offsetMs / 1000;
+
+    return Padding(
+      padding: EdgeInsets.only(top: 2.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: () =>
+                widget.lyricsBloc.add(LyricsOffsetAdjusted(-100)),
+            icon: Icon(
+              Icons.remove_circle_outline_rounded,
+              size: 16.sp,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          GestureDetector(
+            onLongPress: () =>
+                widget.lyricsBloc.add(LyricsOffsetReset()),
+            child: Text(
+              'Offset ${offsetS >= 0 ? '+' : ''}${offsetS.toStringAsFixed(1)}s',
+              style: TextStyle(
+                color: data.offsetMs == 0
+                    ? AppColors.textTertiary
+                    : AppColors.accent,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const <FontFeature>[
+                  FontFeature.tabularFigures(),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: () => widget.lyricsBloc.add(LyricsOffsetAdjusted(100)),
+            icon: Icon(
+              Icons.add_circle_outline_rounded,
+              size: 16.sp,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -402,11 +523,55 @@ class _LyricsViewState extends State<LyricsView> {
   }
 
   Widget _buildToolbar(LyricsStateData data) {
+    final Lyrics? lyrics = data.lyrics;
+    final String sourceLabel = switch (lyrics?.source) {
+      LyricsSource.online => 'ONLINE',
+      LyricsSource.edited => 'TYPED',
+      LyricsSource.tag => 'TAG',
+      LyricsSource.lrc => 'LRC',
+      LyricsSource.ai || null => 'AI',
+    };
+    final String syncLabel = lyrics?.synced ?? false ? 'SYNCED' : 'PLAIN';
+    final double speed = widget.musicBloc.stateData.speed;
+
     return Padding(
-      padding: EdgeInsets.only(right: 8.w, top: 2.h),
+      padding: EdgeInsets.fromLTRB(4.w, 2.h, 8.w, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
         children: <Widget>[
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: widget.onClose,
+            icon: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 22.sp,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Expanded(
+            child: Column(
+              children: <Widget>[
+                Text(
+                  data.song?.title ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  '$sourceLabel · $syncLabel · ${speed.toStringAsFixed(2)}×',
+                  style: TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 10.5.sp,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
           IconButton(
             visualDensity: VisualDensity.compact,
             onPressed: () => _openEditor(data.lyrics),
@@ -461,6 +626,25 @@ class _LyricsViewState extends State<LyricsView> {
     );
   }
 
+  Color _lineColor(int index, int activeIndex) {
+    if (activeIndex < 0) {
+      return AppColors.textSecondary;
+    }
+    final int distance = (index - activeIndex).abs();
+    switch (distance) {
+      case 0:
+        return AppColors.textPrimary;
+      case 1:
+        return AppColors.textSecondary;
+      case 2:
+        return AppColors.textTertiary;
+      case 3:
+        return AppColors.disabled;
+      default:
+        return AppColors.surfaceHigh;
+    }
+  }
+
   Widget _buildLineList(LyricsStateData data, {required bool interactive}) {
     final List<LyricLine> lines = data.lyrics?.lines ?? const <LyricLine>[];
     _syncKeys(lines.length);
@@ -480,21 +664,78 @@ class _LyricsViewState extends State<LyricsView> {
               onTap: interactive
                   ? () => widget.musicBloc.add(SeekTo(line.time.inMilliseconds))
                   : null,
-              child: Text(
-                line.text.isEmpty ? '♪' : line.text,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: isActive ? 17.sp : 15.sp,
-                  height: 1.4,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                  color: isActive
-                      ? AppColors.textPrimary
-                      : AppColors.textPrimary.withValues(alpha: 0.45),
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  if (isActive) ...<Widget>[
+                    Container(
+                      width: 3.w,
+                      margin: EdgeInsets.only(right: 12.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(2.r),
+                      ),
+                    ),
+                  ],
+                  Flexible(
+                    child: Text(
+                      line.text.isEmpty ? '♪' : line.text,
+                      textAlign: isActive ? TextAlign.left : TextAlign.center,
+                      style: TextStyle(
+                        fontSize: isActive ? 25.sp : 15.sp,
+                        height: isActive ? 1.32 : 1.4,
+                        fontWeight: isActive
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: _lineColor(i, data.activeLine),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18.r),
+      onTap: onTap,
+      child: Container(
+        height: 36.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withValues(alpha: 0.14)
+              : AppColors.surface,
+          border: selected ? Border.all(color: AppColors.accent) : null,
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5.sp,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            color: selected ? AppColors.accent : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -545,17 +786,8 @@ class _OnlineLyricsSheetState extends State<_OnlineLyricsSheet> {
             header: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                SizedBox(height: 10.h),
-                Container(
-                  width: 36.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.divider,
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
-                ),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 8.h),
+                  padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
                   child: Row(
                     children: <Widget>[
                       Expanded(
@@ -595,7 +827,7 @@ class _OnlineLyricsSheetState extends State<_OnlineLyricsSheet> {
                         vertical: 12.h,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.r),
+                        borderRadius: BorderRadius.circular(13.r),
                         borderSide: BorderSide.none,
                       ),
                       suffixIcon: data.onlineSearching
@@ -671,62 +903,92 @@ class _OnlineLyricsSheetState extends State<_OnlineLyricsSheet> {
       );
     }
 
-    return ListView.separated(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       itemCount: candidates.length,
-      separatorBuilder: (_, _) =>
-          Divider(height: 1.h, color: AppColors.divider),
       itemBuilder: (BuildContext context, int index) {
         final OnlineLyricsCandidate candidate = candidates[index];
-        final String subtitle = <String>[
-          if (candidate.artistName.isNotEmpty) candidate.artistName,
-          if (candidate.albumName.isNotEmpty) candidate.albumName,
-          _formatDuration(candidate.duration),
-        ].join(' · ');
-        final String chip = candidate.hasSynced
-            ? 'Synced'
-            : candidate.hasPlain
-            ? 'Plain'
-            : 'Instrumental';
+        final String subtitle =
+            '${candidate.artistName.isNotEmpty ? '${candidate.artistName} — ' : ''}'
+            '${candidate.hasSynced
+                ? 'Synced'
+                : candidate.hasPlain
+                ? 'Plain text'
+                : 'Instrumental'} · ${_formatDuration(candidate.duration)}';
 
-        return ListTile(
-          enabled: candidate.hasAny,
-          onTap: () {
-            widget.lyricsBloc.add(LyricsOnlineCandidateSelected(candidate));
-            Navigator.of(context).pop();
-          },
-          title: Text(
-            candidate.trackName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          subtitle: Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 12.sp),
-          ),
-          trailing: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-            decoration: BoxDecoration(
-              color:
-                  (candidate.hasSynced ? AppColors.accent : AppColors.divider)
-                      .withValues(alpha: candidate.hasSynced ? 0.16 : 0.6),
-              borderRadius: BorderRadius.circular(8.r),
-            ),
-            child: Text(
-              chip,
-              style: TextStyle(
-                color: candidate.hasSynced
-                    ? AppColors.accent
-                    : AppColors.textSecondary,
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w600,
+        return InkWell(
+          onTap: candidate.hasAny
+              ? () {
+                  widget.lyricsBloc.add(
+                    LyricsOnlineCandidateSelected(candidate),
+                  );
+                  Navigator.of(context).pop();
+                }
+              : null,
+          child: Opacity(
+            opacity: candidate.hasAny ? 1 : 0.5,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 10.h),
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: 34.w,
+                    height: 34.w,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.iconBg,
+                      borderRadius: BorderRadius.circular(9.r),
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        color: AppColors.iconColor,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          candidate.trackName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11.5.sp,
+                            fontWeight: FontWeight.w500,
+                            fontFeatures: const <FontFeature>[
+                              FontFeature.tabularFigures(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (candidate.hasAny)
+                    Text(
+                      'Use',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

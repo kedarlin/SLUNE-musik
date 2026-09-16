@@ -8,23 +8,45 @@ class SheetAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.iconColor,
+    this.labelColor,
     super.key,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color? iconColor;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, size: 24.sp, color: AppColors.textPrimary),
-      title: Text(
-        label,
-        style: TextStyle(fontSize: 16.sp, color: AppColors.textPrimary),
-      ),
-      contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              icon,
+              size: 19.sp,
+              color: iconColor ?? AppColors.textSecondary,
+            ),
+            SizedBox(width: 12.w),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor ?? AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

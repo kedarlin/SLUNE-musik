@@ -6,6 +6,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../../core/app_constants/app_enums.dart';
 import '../../service/player_client.dart';
+import '../../service/speed_memory.dart';
 import '../songs/songs_bloc.dart';
 
 part 'music_controller_event.dart';
@@ -346,6 +347,19 @@ class MusicControllerBloc
     _lastPersistedPositionMs = stateData.position;
   }
 
+  Future<void> _applyRememberedSpeed() async {
+    final SongModel? song = stateData.song;
+    if (song == null || !SpeedMemory.enabled) {
+      return;
+    }
+    final double? remembered = SpeedMemory.speedFor(song.id);
+    if (remembered == null || remembered == stateData.speed) {
+      return;
+    }
+    stateData.speed = remembered;
+    await _player.setSpeed(remembered);
+  }
+
   void _syncSongAndIndex() {
     if (stateData.queue.isEmpty) {
       stateData.index = 0;
@@ -369,6 +383,7 @@ class MusicControllerBloc
 
     await _player.setQueue(songs: stateData.queue, startIndex: stateData.index);
     await _applyAudioFx();
+    await _applyRememberedSpeed();
     await _checkOutputBucket();
 
     if (stateData.song != null) {
@@ -411,6 +426,7 @@ class MusicControllerBloc
     if (stateData.index != previousIndex) {
       stateData.abLoopAMs = null;
       stateData.abLoopBMs = null;
+      await _applyRememberedSpeed();
       await _syncCrossfadeForAbLoop();
       await _checkOutputBucket();
 
@@ -462,6 +478,9 @@ class MusicControllerBloc
     await _player.setSpeed(event.speed);
     stateData.speed = event.speed;
     await _settingsBox.put('fxSpeed', event.speed);
+    if (stateData.song != null) {
+      SpeedMemory.remember(stateData.song!.id, event.speed);
+    }
     emit(stateData);
   }
 

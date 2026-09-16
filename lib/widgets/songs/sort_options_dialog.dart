@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/app_constants/app_enums.dart';
 import '../../core/theme/app_colors.dart';
+import '../common/sheet_shell.dart';
 
 class SortOptionsResult {
   const SortOptionsResult({
@@ -34,8 +35,11 @@ class SortOptionsDialog extends StatefulWidget {
     required bool ascending,
     required bool hideUnderOneMinute,
   }) {
-    return showDialog<SortOptionsResult>(
+    return showModalBottomSheet<SortOptionsResult>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) => SortOptionsDialog(
         field: field,
         ascending: ascending,
@@ -53,24 +57,17 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
   late bool _ascending = widget.ascending;
   late bool _hideUnderOneMinute = widget.hideUnderOneMinute;
 
-  static const Map<SongSortField, IconData> _icons = <SongSortField, IconData>{
-    SongSortField.title: Icons.sort_by_alpha_rounded,
-    SongSortField.length: Icons.slow_motion_video_rounded,
-    SongSortField.date: Icons.calendar_today_rounded,
-    SongSortField.size: Icons.sd_card_outlined,
-  };
-
   static const Map<SongSortField, String> _labels = <SongSortField, String>{
     SongSortField.title: 'Title',
     SongSortField.length: 'Length',
-    SongSortField.date: 'Date',
-    SongSortField.size: 'Size',
+    SongSortField.date: 'Date added',
+    SongSortField.size: 'File size',
   };
 
   List<String> get _directionLabels {
     switch (_field) {
       case SongSortField.title:
-        return <String>['A-Z', 'Z-A'];
+        return <String>['A→Z', 'Z→A'];
       case SongSortField.length:
         return <String>['Shortest', 'Longest'];
       case SongSortField.date:
@@ -80,70 +77,12 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
     }
   }
 
-  Widget _buildFieldOption(SongSortField field) {
-    final bool selected = field == _field;
-    final Color color = selected ? AppColors.accent : AppColors.textPrimary;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _field = field),
-        borderRadius: BorderRadius.circular(8.r),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(_icons[field], size: 24.sp, color: color),
-              SizedBox(height: 8.h),
-              Text(
-                _labels[field]!,
-                style: TextStyle(color: color, fontSize: 12.sp),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDirectionOption({
-    required String label,
-    required IconData icon,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.transparent : AppColors.surface,
-            border: Border.all(
-              color: selected ? AppColors.accent : AppColors.transparent,
-              width: 1.w,
-            ),
-            borderRadius: BorderRadius.circular(6.r),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Icon(
-                icon,
-                size: 16.sp,
-                color: selected ? AppColors.accent : AppColors.textPrimary,
-              ),
-              SizedBox(width: 6.w),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? AppColors.accent : AppColors.textPrimary,
-                  fontSize: 14.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
+  void _apply() {
+    Navigator.of(context).pop(
+      SortOptionsResult(
+        field: _field,
+        ascending: _ascending,
+        hideUnderOneMinute: _hideUnderOneMinute,
       ),
     );
   }
@@ -152,101 +91,172 @@ class _SortOptionsDialogState extends State<SortOptionsDialog> {
   Widget build(BuildContext context) {
     final List<String> directions = _directionLabels;
 
-    return Dialog(
-      backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return SheetShell(
+      header: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Text(
-              'Sort by',
+              'Sort tracks',
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            SizedBox(height: 20.h),
-            Row(children: SongSortField.values.map(_buildFieldOption).toList()),
-            SizedBox(height: 20.h),
             Row(
               children: <Widget>[
-                _buildDirectionOption(
+                _DirectionChip(
                   label: directions[0],
-                  icon: Icons.arrow_upward_rounded,
                   selected: _ascending,
-                  onTap: () => setState(() => _ascending = true),
+                  onTap: () {
+                    setState(() => _ascending = true);
+                    _apply();
+                  },
                 ),
-                _buildDirectionOption(
+                SizedBox(width: 6.w),
+                _DirectionChip(
                   label: directions[1],
-                  icon: Icons.arrow_downward_rounded,
                   selected: !_ascending,
-                  onTap: () => setState(() => _ascending = false),
-                ),
-              ],
-            ),
-            SizedBox(height: 12.h),
-            Divider(color: AppColors.divider, height: 1.h),
-            SizedBox(height: 4.h),
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    '1 min above',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                ),
-                Switch(
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  value: _hideUnderOneMinute,
-                  activeThumbColor: AppColors.white,
-                  activeTrackColor: AppColors.accent,
-                  onChanged: (bool value) =>
-                      setState(() => _hideUnderOneMinute = value),
-                ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(
-                    SortOptionsResult(
-                      field: _field,
-                      ascending: _ascending,
-                      hideUnderOneMinute: _hideUnderOneMinute,
-                    ),
-                  ),
-                  child: Text(
-                    'Done',
-                    style: TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  onTap: () {
+                    setState(() => _ascending = false);
+                    _apply();
+                  },
                 ),
               ],
             ),
           ],
+        ),
+      ),
+      body: Padding(
+        padding: EdgeInsets.fromLTRB(4.w, 4.h, 4.w, 8.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final SongSortField field in SongSortField.values)
+              _FieldRow(
+                label: _labels[field]!,
+                selected: field == _field,
+                onTap: () {
+                  setState(() => _field = field);
+                  _apply();
+                },
+              ),
+            Divider(
+              color: AppColors.divider,
+              height: 17.h,
+              indent: 20.w,
+              endIndent: 20.w,
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'Hide tracks under 1 minute',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14.5.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    value: _hideUnderOneMinute,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppColors.accent,
+                    inactiveThumbColor: AppColors.textTertiary,
+                    inactiveTrackColor: AppColors.surfaceHigh,
+                    onChanged: (bool value) {
+                      setState(() => _hideUnderOneMinute = value);
+                      _apply();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 4.h),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldRow extends StatelessWidget {
+  const _FieldRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 11.h),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? AppColors.accent : AppColors.textPrimary,
+                fontSize: 14.5.sp,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, size: 17.sp, color: AppColors.accent),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DirectionChip extends StatelessWidget {
+  const _DirectionChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14.r),
+      onTap: onTap,
+      child: Container(
+        height: 28.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withValues(alpha: 0.16)
+              : AppColors.surfaceHigh,
+          border: selected ? Border.all(color: AppColors.accent) : null,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5.sp,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            color: selected ? AppColors.accent : AppColors.textSecondary,
+          ),
         ),
       ),
     );

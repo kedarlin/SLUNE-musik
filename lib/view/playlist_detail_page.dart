@@ -10,7 +10,6 @@ import '../core/app_constants/playlist_constants.dart';
 import '../core/theme/app_colors.dart';
 import '../core/utils/utils.dart';
 import '../models/playlist_model.dart';
-import '../widgets/playlists/playlist_thumbnail.dart';
 import '../widgets/songs/song_options_sheet.dart';
 import '../widgets/songs/song_tile.dart';
 
@@ -62,26 +61,6 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
     return _playlist?.name ?? 'Playlist';
   }
 
-  Color get _accentColor {
-    if (_isFavourites) {
-      return PlaylistColors.favouritesIcon;
-    }
-    if (_isRecentlyPlayed) {
-      return PlaylistColors.recentIcon;
-    }
-    return PlaylistColors.userIcon;
-  }
-
-  Widget get _thumbnail {
-    if (_isFavourites) {
-      return PlaylistThumbnail.favourites(size: 64.w);
-    }
-    if (_isRecentlyPlayed) {
-      return PlaylistThumbnail.recentlyPlayed(size: 64.w);
-    }
-    return PlaylistThumbnail.user(size: 64.w);
-  }
-
   List<SongModel> get _songs {
     if (_isFavourites) {
       return _songsBloc.stateData.favorites;
@@ -110,6 +89,11 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
       InitAudio(song: songs.first, index: 0, queue: songs),
     );
 
+    final double? pinnedSpeed = _playlist?.pinnedSpeed;
+    if (pinnedSpeed != null) {
+      _musicControllerBloc.add(SpeedChanged(pinnedSpeed));
+    }
+
     Utils.openPlayerBottomSheet(context, songs.first, 0);
   }
 
@@ -128,59 +112,8 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
               return Column(
                 children: <Widget>[
                   _buildHeader(songs.length),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20.r),
-                        ),
-                      ),
-                      child: Column(
-                        children: <Widget>[
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                16.w,
-                                16.h,
-                                16.w,
-                                8.h,
-                              ),
-                              child: ElevatedButton.icon(
-                                onPressed: () => _playAll(songs),
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 0,
-                                  backgroundColor: AppColors.accent,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 22.w,
-                                    vertical: 14.h,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(28.r),
-                                  ),
-                                ),
-                                icon: Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 24.sp,
-                                  color: AppColors.white,
-                                ),
-                                label: Text(
-                                  'Play All',
-                                  style: TextStyle(
-                                    color: AppColors.white,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(child: _buildSongList(songs)),
-                        ],
-                      ),
-                    ),
-                  ),
+                  if (songs.isNotEmpty) _buildActionRow(songs),
+                  Expanded(child: _buildSongList(songs)),
                 ],
               );
             },
@@ -191,69 +124,95 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   }
 
   Widget _buildHeader(int songCount) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            _accentColor.withValues(alpha: 0.85),
-            _accentColor.withValues(alpha: 0.30),
-          ],
-        ),
-      ),
-      padding: EdgeInsets.only(
-        top: MediaQuery.paddingOf(context).top,
-        bottom: 28.h,
-      ),
-      child: Column(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(6.w, 8.h, 18.w, 4.h),
+      child: Row(
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: Icon(
-                  Icons.arrow_back_rounded,
-                  size: 24.sp,
-                  color: AppColors.white,
-                ),
-              ),
-              const Spacer(),
-            ],
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              size: 22.sp,
+              color: AppColors.textPrimary,
+            ),
           ),
-          SizedBox(height: 8.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _thumbnail,
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        _title,
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        '$songCount Song${songCount == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          color: AppColors.white.withValues(alpha: 0.85),
-                          fontSize: 15.sp,
-                        ),
-                      ),
-                    ],
+                Text(
+                  _title,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                Text(
+                  '$songCount track${songCount == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 12.5.sp,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionRow(List<SongModel> songs) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18.w, 4.h, 18.w, 12.h),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(0, 46.h),
+                backgroundColor: AppColors.accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13.r),
+                ),
+              ),
+              onPressed: () => _playAll(songs),
+              icon: Icon(
+                Icons.play_arrow_rounded,
+                size: 18.sp,
+                color: Colors.white,
+              ),
+              label: Text(
+                'Play all ${songs.length}',
+                style: TextStyle(
+                  fontSize: 13.5.sp,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Container(
+            width: 46.h,
+            height: 46.h,
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.divider),
+              borderRadius: BorderRadius.circular(13.r),
+            ),
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: () =>
+                  _musicControllerBloc.add(ShuffleAll(songs)),
+              icon: Icon(
+                Icons.shuffle_rounded,
+                size: 19.sp,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -282,6 +241,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
         song: song,
         queue: songs,
         index: index,
+        queueSpeed: _playlist?.pinnedSpeed,
         onMoreTap: () {
           SongOptionsSheet.show(
             context,

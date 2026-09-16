@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../bloc/music_controller/music_controller_bloc.dart';
 import '../bloc/songs/songs_bloc.dart';
+import '../core/app_constants/app_enums.dart';
 import '../core/theme/app_colors.dart';
 import '../widgets/songs/song_list_skeleton.dart';
 import '../widgets/songs/song_options_sheet.dart';
@@ -15,7 +16,9 @@ import '../widgets/songs/song_tile.dart';
 import '../widgets/songs/sort_options_dialog.dart';
 
 class AllSongsPage extends StatefulWidget {
-  const AllSongsPage({super.key});
+  const AllSongsPage({required this.searchController, super.key});
+
+  final TextEditingController searchController;
 
   @override
   State<AllSongsPage> createState() => _AllSongsPageState();
@@ -27,9 +30,7 @@ class _AllSongsPageState extends State<AllSongsPage>
   bool isSearching = false;
   bool _checkingPermission = true;
   bool _permissionDenied = false;
-  final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
-  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _listScrollController = ScrollController();
 
   @override
@@ -38,13 +39,19 @@ class _AllSongsPageState extends State<AllSongsPage>
     WidgetsBinding.instance.addObserver(this);
     _songsBloc = BlocProvider.of<SongsBloc>(context);
     _requestPermissionThenLoadSongs();
-    searchController.addListener(() {
-      setState(() {
-        isSearching = searchController.text.isNotEmpty;
-      });
+    widget.searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      isSearching = widget.searchController.text.isNotEmpty;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.unfocus();
+
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _songsBloc.add(SearchSongs(searchText: widget.searchController.text));
     });
   }
 
@@ -166,8 +173,9 @@ class _AllSongsPageState extends State<AllSongsPage>
             onPressed: _onGrantPermissionPressed,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.accent,
+              minimumSize: Size(0, 46.h),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
+                borderRadius: BorderRadius.circular(13.r),
               ),
             ),
             child: Text(
@@ -187,9 +195,8 @@ class _AllSongsPageState extends State<AllSongsPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.searchController.removeListener(_onSearchChanged);
     _debounce?.cancel();
-    searchController.dispose();
-    _searchFocusNode.dispose();
     _listScrollController.dispose();
     super.dispose();
   }
@@ -199,119 +206,36 @@ class _AllSongsPageState extends State<AllSongsPage>
     super.build(context);
     return Column(
       children: <Widget>[
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          child: Row(
-            spacing: 8.w,
-            children: <Widget>[
-              Expanded(
-                child: SizedBox(
-                  height: 44.h,
-                  child: SearchBar(
-                    leading: Icon(
-                      Icons.search_rounded,
-                      size: 20.sp,
-                      color: AppColors.textSecondary,
-                    ),
-                    focusNode: _searchFocusNode,
-                    controller: searchController,
-                    hintText: 'Search songs...',
-                    hintStyle: WidgetStatePropertyAll<TextStyle>(
-                      TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                    shadowColor: const WidgetStatePropertyAll<Color>(
-                      AppColors.transparent,
-                    ),
-                    padding: WidgetStatePropertyAll<EdgeInsets>(
-                      EdgeInsets.symmetric(horizontal: 12.w),
-                    ),
-                    backgroundColor: const WidgetStatePropertyAll<Color>(
-                      AppColors.surface,
-                    ),
-                    textStyle: WidgetStatePropertyAll<TextStyle>(
-                      TextStyle(
-                        fontSize: 14.sp,
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    onTapOutside: (PointerDownEvent event) {
-                      _searchFocusNode.unfocus();
-                      FocusScope.of(context).unfocus();
-                    },
-                    shape: WidgetStatePropertyAll<OutlinedBorder>(
-                      RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                    ),
-                    trailing: <Widget>[
-                      if (isSearching)
-                        IconButton(
-                          onPressed: searchController.clear,
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          icon: Icon(
-                            Icons.close,
-                            size: 20.sp,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                    onChanged: (String value) {
-                      if (_debounce?.isActive ?? false) {
-                        _debounce!.cancel();
-                      }
-
-                      _debounce = Timer(const Duration(milliseconds: 300), () {
-                        _songsBloc.add(
-                          SearchSongs(searchText: searchController.text),
-                        );
-                      });
-                    },
-                  ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.w, 10.h, 16.w, 4.h),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _shuffleAll,
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: AppColors.divider, width: 1.w),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13.r),
                 ),
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                minimumSize: Size(0, 44.h),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                backgroundColor: AppColors.transparent,
               ),
-              OutlinedButton.icon(
-                onPressed: _shuffleAll,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: AppColors.divider, width: 1.w),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  minimumSize: Size(0, 44.h),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: AppColors.transparent,
-                ),
-                icon: Icon(
-                  Icons.shuffle_rounded,
-                  size: 17.sp,
+              icon: Icon(
+                Icons.shuffle_rounded,
+                size: 17.sp,
+                color: AppColors.textPrimary,
+              ),
+              label: Text(
+                'Shuffle All',
+                style: TextStyle(
                   color: AppColors.textPrimary,
-                ),
-                label: Text(
-                  'Shuffle All',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              IconButton(
-                onPressed: _openSortDialog,
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints(minWidth: 32.w),
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.swap_vert_rounded,
-                  size: 24.sp,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         BlocBuilder<SongsBloc, SongsState>(
@@ -326,7 +250,95 @@ class _AllSongsPageState extends State<AllSongsPage>
               return const Center(child: Text('No songs found'));
             }
             return Expanded(
-              child: RefreshIndicator(
+              child: Column(
+                children: <Widget>[
+                  _buildCountRow(),
+                  Expanded(child: _buildList()),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  String _formatTotalSize(int bytes) {
+    final double gb = bytes / (1024 * 1024 * 1024);
+    if (gb >= 0.1) {
+      return '${gb.toStringAsFixed(1)} GB';
+    }
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(0)} MB';
+  }
+
+  static const Map<SongSortField, String> _sortFieldLabels =
+      <SongSortField, String>{
+        SongSortField.title: 'Title',
+        SongSortField.length: 'Length',
+        SongSortField.date: 'Date added',
+        SongSortField.size: 'File size',
+      };
+
+  Widget _buildCountRow() {
+    final List<SongModel> list = isSearching
+        ? _songsBloc.stateData.searchSongs
+        : _songsBloc.stateData.songs;
+    final int totalBytes = list.fold<int>(0, (int sum, SongModel s) => sum + s.size);
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Text(
+            '${list.length} track${list.length == 1 ? '' : 's'} · '
+            '${_formatTotalSize(totalBytes)}',
+            style: TextStyle(
+              color: AppColors.textTertiary,
+              fontSize: 12.5.sp,
+              fontWeight: FontWeight.w500,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(15.r),
+            onTap: _openSortDialog,
+            child: Container(
+              height: 30.h,
+              padding: EdgeInsets.symmetric(horizontal: 11.w),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(15.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    _sortFieldLabels[_songsBloc.stateData.sortField] ??
+                        'Title',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(width: 4.w),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 15.sp,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    return RefreshIndicator(
                 onRefresh: () async {
                   if (isSearching) {
                     return;
@@ -390,11 +402,6 @@ class _AllSongsPageState extends State<AllSongsPage>
                     },
                   ),
                 ),
-              ),
-            );
-          },
-        ),
-      ],
     );
   }
 }

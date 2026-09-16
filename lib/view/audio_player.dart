@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,15 +8,19 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../bloc/lyrics/lyrics_bloc.dart';
 import '../bloc/music_controller/music_controller_bloc.dart';
-import '../bloc/songs/songs_bloc.dart';
 import '../core/app_constants/app_enums.dart';
 import '../core/theme/app_colors.dart';
-import '../core/theme/app_slider_theme.dart';
 import '../widgets/common/scrolling_title.dart';
 import '../widgets/player/player_options_sheet.dart';
+import '../widgets/player/speed_pitch_sheet.dart';
 import 'equalizer_sheet.dart';
 import 'lyrics_view.dart';
 import 'playing_queue_sheet.dart';
+
+const double _ringSize = 344;
+const double _ringOuterR = 164;
+const double _ringInnerR = 150;
+const double _ringHalf = 172;
 
 class MusicPlayerPage extends StatefulWidget {
   const MusicPlayerPage({super.key, required this.index});
@@ -28,40 +31,17 @@ class MusicPlayerPage extends StatefulWidget {
   State<MusicPlayerPage> createState() => _MusicPlayerPageState();
 }
 
-class _MusicPlayerPageState extends State<MusicPlayerPage>
-    with TickerProviderStateMixin {
+class _MusicPlayerPageState extends State<MusicPlayerPage> {
   late MusicControllerBloc _musicControllerBloc;
-  late SongsBloc _songsBloc;
   late LyricsBloc _lyricsBloc;
-  late AnimationController _rotationController;
-  late AnimationController _tonearmController;
   bool _showLyrics = false;
-  bool _showAbLoop = false;
+  bool _abLoopArmed = false;
 
   @override
   void initState() {
     super.initState();
     _musicControllerBloc = BlocProvider.of<MusicControllerBloc>(context);
-    _songsBloc = BlocProvider.of<SongsBloc>(context);
     _lyricsBloc = BlocProvider.of<LyricsBloc>(context);
-
-    _rotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    _tonearmController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-      value: _musicControllerBloc.stateData.isPlaying ? 1.0 : 0.0,
-    );
-  }
-
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    _tonearmController.dispose();
-    super.dispose();
   }
 
   String _formatTime(int ms) {
@@ -83,126 +63,18 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     }
   }
 
-  void _showSpeedPitchSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (BuildContext sheetContext) {
-        return BlocBuilder<MusicControllerBloc, MusicControllerState>(
-          bloc: _musicControllerBloc,
-          builder: (BuildContext context, MusicControllerState state) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 0.5.sh),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Speed  ${_musicControllerBloc.stateData.speed.toStringAsFixed(2)}x',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                      SliderTheme(
-                        data: appSliderTheme(
-                          inactiveColor: AppColors.textTertiary,
-                        ),
-                        child: Slider(
-                          min: 0.5,
-                          max: 2.0,
-                          value: _musicControllerBloc.stateData.speed.clamp(
-                            0.5,
-                            2.0,
-                          ),
-                          onChanged: (double value) =>
-                              _musicControllerBloc.add(SpeedChanged(value)),
-                        ),
-                      ),
-                      SizedBox(height: 12.h),
-                      Text(
-                        'Pitch  ${_musicControllerBloc.stateData.pitch.toStringAsFixed(2)}x',
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 16.sp,
-                        ),
-                      ),
-                      SliderTheme(
-                        data: appSliderTheme(
-                          inactiveColor: AppColors.textTertiary,
-                        ),
-                        child: Slider(
-                          min: 0.5,
-                          max: 2.0,
-                          value: _musicControllerBloc.stateData.pitch.clamp(
-                            0.5,
-                            2.0,
-                          ),
-                          onChanged: (double value) =>
-                              _musicControllerBloc.add(PitchChanged(value)),
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: <Widget>[
-                          TextButton(
-                            onPressed: () {
-                              _musicControllerBloc.add(SpeedChanged(0.90));
-                              _musicControllerBloc.add(PitchChanged(0.95));
-                            },
-                            child: Text(
-                              'Lo-Fi Preset',
-                              style: TextStyle(
-                                color: AppColors.accent,
-                                fontSize: 15.sp,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              _musicControllerBloc.add(SpeedChanged(1.0));
-                              _musicControllerBloc.add(PitchChanged(1.0));
-                            },
-                            child: Text(
-                              'Reset',
-                              style: TextStyle(
-                                color: AppColors.accent,
-                                fontSize: 15.sp,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showEqualizerSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (BuildContext sheetContext) =>
-          EqualizerSheet(musicBloc: _musicControllerBloc),
-    );
+  void _onAbChipTap() {
+    final MusicControllerStateData data = _musicControllerBloc.stateData;
+    if (data.hasAbLoop) {
+      _musicControllerBloc.add(ClearAbLoop());
+      setState(() => _abLoopArmed = false);
+    } else if (data.abLoopAMs != null) {
+      _musicControllerBloc.add(SetAbLoopPointB());
+    } else if (_abLoopArmed) {
+      _musicControllerBloc.add(SetAbLoopPointA());
+    } else {
+      setState(() => _abLoopArmed = true);
+    }
   }
 
   IconData get _repeatIcon {
@@ -215,24 +87,10 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     }
   }
 
-  Color get _repeatColor {
-    return _musicControllerBloc.stateData.repeatMode == RepeatMode.off
-        ? AppColors.textPrimary
-        : AppColors.accent;
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<MusicControllerBloc, MusicControllerState>(
       listener: (BuildContext context, MusicControllerState state) {
-        if (_musicControllerBloc.stateData.isPlaying) {
-          _rotationController.repeat();
-          _tonearmController.forward();
-        } else {
-          _rotationController.stop();
-          _tonearmController.reverse();
-        }
-
         if (_musicControllerBloc.stateData.queue.isEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -244,80 +102,38 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
       child: BlocBuilder<MusicControllerBloc, MusicControllerState>(
         bloc: _musicControllerBloc,
         builder: (BuildContext context, MusicControllerState state) {
-          final SongModel? song = _musicControllerBloc.stateData.song;
-          final bool isFavorite =
-              song != null &&
-              _songsBloc.stateData.favoriteIds.contains(song.id);
+          final MusicControllerStateData data = _musicControllerBloc.stateData;
+          final SongModel? song = data.song;
 
           return Scaffold(
-            backgroundColor: AppColors.transparent,
-            body: Stack(
-              children: <Widget>[
-                Positioned.fill(
-                  child: QueryArtworkWidget(
-                    type: ArtworkType.AUDIO,
-                    id: song?.id ?? 0,
-                    keepOldArtwork: true,
-                    nullArtworkWidget: Container(color: AppColors.background),
-                  ),
-                ),
-                Positioned.fill(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 100.w, sigmaY: 100.w),
-                    child: Container(
-                      color: Colors.black.withValues(alpha: 0.72),
+            backgroundColor: AppColors.background,
+            body: SafeArea(
+              child: Column(
+                children: <Widget>[
+                  _buildTopBar(context, song, data),
+                  Expanded(
+                    child: GestureDetector(
+                      onHorizontalDragEnd: _onSwipeChangeSong,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        child: _showLyrics
+                            ? LyricsView(
+                                key: const ValueKey<String>('lyrics'),
+                                lyricsBloc: _lyricsBloc,
+                                musicBloc: _musicControllerBloc,
+                                onClose: () =>
+                                    setState(() => _showLyrics = false),
+                              )
+                            : _buildRingAndInfo(song, data),
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: MediaQueryData.fromView(View.of(context)).padding.top,
-                    bottom: MediaQueryData.fromView(
-                      View.of(context),
-                    ).padding.bottom,
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      SizedBox(height: 12.h),
-                      _buildTopBar(song),
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          child: _showLyrics
-                              ? LyricsView(
-                                  key: const ValueKey<String>('lyrics'),
-                                  lyricsBloc: _lyricsBloc,
-                                  musicBloc: _musicControllerBloc,
-                                )
-                              : GestureDetector(
-                                  key: const ValueKey<String>('disc'),
-                                  onTap: () =>
-                                      setState(() => _showLyrics = true),
-                                  onHorizontalDragEnd: _onSwipeChangeSong,
-                                  child: Center(
-                                    child: FittedBox(
-                                      child: _buildTurntable(song),
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ),
-                      _buildUtilityRow(song, isFavorite),
-                      SizedBox(height: 16.h),
-                      _buildProgress(),
-                      if (_showAbLoop) ...<Widget>[
-                        SizedBox(height: 4.h),
-                        _buildAbLoopRow(),
-                      ],
-                      SizedBox(height: 12.h),
-                      _buildControls(),
-                      SizedBox(height: 40.h),
-                      _buildBottomRow(),
-                      SizedBox(height: 60.h),
-                    ],
-                  ),
-                ),
-              ],
+                  _buildTransportRow(),
+                  SizedBox(height: 22.h),
+                  _buildBottomStatsRow(context, data),
+                  SizedBox(height: 18.h),
+                ],
+              ),
             ),
           );
         },
@@ -325,177 +141,40 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     );
   }
 
-  Widget _buildTopBar(SongModel? song) {
+  Widget _buildTopBar(
+    BuildContext context,
+    SongModel? song,
+    MusicControllerStateData data,
+  ) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: () => context.pop(),
-            icon: Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textPrimary,
-              size: 28.sp,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              children: <Widget>[
-                ScrollingTitle(
-                  text: song?.title ?? 'NA',
-                  height: 26.h,
-                  startPadding: 40.w,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  song?.artist ?? 'Unknown Artist',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: AppColors.textPrimary.withValues(alpha: 0.75),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 48.w),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTurntable(SongModel? song) {
-    final double discSize = 0.8.sw;
-
-    return SizedBox(
-      width: 1.sw,
-      height: 1.sw,
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          Container(
-            height: discSize,
-            width: discSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.vinylEdge, width: 5.w),
-              gradient: const SweepGradient(
-                colors: <Color>[
-                  AppColors.vinylGroove,
-                  Colors.black,
-                  AppColors.vinylGroove,
-                  Colors.black,
-                  AppColors.vinylGroove,
-                ],
-              ),
-            ),
-            padding: EdgeInsets.all(0.14.sw),
-            child: RotationTransition(
-              turns: _rotationController,
-              child: ClipOval(
-                child: QueryArtworkWidget(
-                  type: ArtworkType.AUDIO,
-                  id: song?.id ?? 0,
-                  keepOldArtwork: true,
-                  artworkHeight: discSize,
-                  artworkWidth: discSize,
-                  nullArtworkWidget: Container(
-                    color: AppColors.vinylCenter,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Icons.music_note,
-                      size: 90.sp,
-                      color: AppColors.vinylNote,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0.sw,
-            right: 0.35.sw,
-            child: AnimatedBuilder(
-              animation: _tonearmController,
-              builder: (BuildContext context, Widget? child) {
-                final double angle = lerpDouble(
-                  0.52,
-                  0.0,
-                  Curves.easeInOut.transform(_tonearmController.value),
-                )!;
-
-                return Transform.rotate(
-                  angle: angle,
-                  alignment: Alignment.topRight,
-                  child: child,
-                );
-              },
-              child: CustomPaint(
-                size: Size(0.26.sw, 0.30.sw),
-                painter: _TonearmPainter(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUtilityRow(SongModel? song, bool isFavorite) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 28.w),
+      key: const ValueKey<String>('topbar'),
+      padding: EdgeInsets.fromLTRB(8.w, 6.h, 8.w, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
           IconButton(
-            onPressed: _showEqualizerSheet,
+            onPressed: () => context.pop(),
             icon: Icon(
-              Icons.tune_rounded,
-              size: 26.sp,
-              color: AppColors.textPrimary,
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
+              size: 24.sp,
             ),
           ),
-          IconButton(
-            onPressed: () => setState(() => _showAbLoop = !_showAbLoop),
-            icon: Icon(
-              Icons.compare_arrows_rounded,
-              size: 26.sp,
-              color: _musicControllerBloc.stateData.hasAbLoop
-                  ? AppColors.accent
-                  : AppColors.textPrimary,
-            ),
-          ),
-          IconButton(
-            onPressed: _showSpeedPitchSheet,
-            icon: Icon(
-              Icons.speed_rounded,
-              size: 26.sp,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          IconButton(
-            onPressed: song == null
-                ? null
-                : () {
-                    _songsBloc.add(
-                      isFavorite
-                          ? RemoveFromFavorites(song.id)
-                          : AddToFavorites(song.id),
-                    );
-                  },
-            icon: Icon(
-              isFavorite
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              size: 26.sp,
-              color: isFavorite ? AppColors.accent : AppColors.textPrimary,
+          InkWell(
+            borderRadius: BorderRadius.circular(8.r),
+            onTap: () => PlayingQueueSheet.show(context),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+              child: Text(
+                'QUEUE · ${data.queue.length}',
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 10.5.sp,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.8,
+                  color: AppColors.textTertiary,
+                ),
+              ),
             ),
           ),
           IconButton(
@@ -504,8 +183,8 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
                 : () => PlayerOptionsSheet.show(context, song: song),
             icon: Icon(
               Icons.more_vert_rounded,
-              size: 26.sp,
-              color: AppColors.textPrimary,
+              color: AppColors.textSecondary,
+              size: 20.sp,
             ),
           ),
         ],
@@ -513,82 +192,104 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     );
   }
 
-  Widget _buildProgress() {
-    final int duration = _musicControllerBloc.stateData.duration;
-    final int position = _musicControllerBloc.stateData.position;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      child: Column(
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  _formatTime(position),
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14.sp,
-                  ),
+  Widget _buildRingAndInfo(SongModel? song, MusicControllerStateData data) {
+    return Column(
+      key: const ValueKey<String>('ring'),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        GestureDetector(
+          onTap: () => setState(() => _showLyrics = true),
+          child: _OrbitalRing(song: song, data: data),
+        ),
+        _buildTimeRow(data),
+        Padding(
+          padding: EdgeInsets.fromLTRB(24.w, 18.h, 24.w, 0),
+          child: Column(
+            children: <Widget>[
+              ScrollingTitle(
+                text: song?.title ?? 'NA',
+                height: 24.h,
+                style: TextStyle(
+                  fontSize: 19.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-                Text(
-                  _formatTime(duration),
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14.sp,
-                  ),
+              ),
+              SizedBox(height: 2.h),
+              Text(
+                song?.artist ?? 'Unknown Artist',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
                 ),
-              ],
-            ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
           ),
-          SliderTheme(
-            data: appSliderTheme(),
-            child: Slider(
-              max: duration.toDouble().clamp(1, double.infinity),
-              value: position.toDouble().clamp(0, duration.toDouble()),
-              onChanged: (double value) =>
-                  _musicControllerBloc.add(SeekTo(value.toInt())),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildAbLoopRow() {
-    final int? a = _musicControllerBloc.stateData.abLoopAMs;
-    final int? b = _musicControllerBloc.stateData.abLoopBMs;
+  Widget _buildTimeRow(MusicControllerStateData data) {
+    final bool looping = data.hasAbLoop;
+    final bool aSet = data.abLoopAMs != null;
+    final bool armed = _abLoopArmed && !aSet;
+
+    final String abLabel = looping
+        ? 'A–B on'
+        : aSet
+        ? 'A–B: tap for end'
+        : armed
+        ? 'A–B: tap for start'
+        : 'A–B off';
+    final bool abActive = looping || aSet || armed;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
+      padding: EdgeInsets.only(top: 18.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          _buildAbPoint(
-            label: 'A',
-            ms: a,
-            onTap: () => _musicControllerBloc.add(SetAbLoopPointA()),
+          Text(
+            _formatTime(data.position),
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
           ),
-          SizedBox(width: 24.w),
-          _buildAbPoint(
-            label: 'B',
-            ms: b,
-            onTap: () => _musicControllerBloc.add(SetAbLoopPointB()),
+          Text(
+            ' / ',
+            style: TextStyle(
+              color: AppColors.disabled,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          SizedBox(width: 20.w),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: (a == null && b == null)
-                ? null
-                : () => _musicControllerBloc.add(ClearAbLoop()),
-            icon: Icon(
-              Icons.close_rounded,
-              size: 18.sp,
-              color: (a == null && b == null)
-                  ? AppColors.disabled
-                  : AppColors.textPrimary,
+          Text(
+            _formatTime(data.duration),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+          SizedBox(width: 10.w),
+          Container(width: 1, height: 14.h, color: AppColors.divider),
+          SizedBox(width: 10.w),
+          InkWell(
+            onTap: _onAbChipTap,
+            child: Text(
+              abLabel,
+              style: TextStyle(
+                color: abActive ? AppColors.loop : AppColors.textTertiary,
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -596,157 +297,129 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
     );
   }
 
-  Widget _buildAbPoint({
-    required String label,
-    required int? ms,
-    required VoidCallback onTap,
-  }) {
-    final Color color = ms != null ? AppColors.accent : AppColors.textPrimary;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: 24.w,
-              height: 24.w,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: color, width: 1.5.w),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (ms != null) ...<Widget>[
-              SizedBox(width: 6.w),
-              Text(
-                _formatTime(ms),
-                style: TextStyle(color: color, fontSize: 13.sp),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControls() {
+  Widget _buildTransportRow() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           IconButton(
             onPressed: () => _musicControllerBloc.add(ToggleShuffle()),
             icon: Icon(
               Icons.shuffle_rounded,
-              size: 24.sp,
+              size: 21.sp,
               color: _musicControllerBloc.stateData.isShuffle
                   ? AppColors.accent
-                  : AppColors.textPrimary,
+                  : AppColors.textSecondary,
             ),
           ),
+          SizedBox(width: 4.w),
           IconButton(
             onPressed: () => _musicControllerBloc.add(PreviousSong()),
             icon: Icon(
               Icons.skip_previous_rounded,
-              size: 34.sp,
+              size: 26.sp,
               color: AppColors.textPrimary,
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.textPrimary, width: 2.w),
-            ),
-            padding: EdgeInsets.all(10.w),
-            child: GestureDetector(
-              onTap: () => _musicControllerBloc.add(PlayPauseToggled()),
+          SizedBox(width: 4.w),
+          InkWell(
+            borderRadius: BorderRadius.circular(35.r),
+            onTap: () => _musicControllerBloc.add(PlayPauseToggled()),
+            child: Container(
+              width: 70.w,
+              height: 70.w,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
               child: Icon(
                 _musicControllerBloc.stateData.isPlaying
-                    ? Icons.pause
-                    : Icons.play_arrow,
-                size: 38.sp,
-                color: AppColors.textPrimary,
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
+                size: 28.sp,
+                color: Colors.black,
               ),
             ),
           ),
+          SizedBox(width: 4.w),
           IconButton(
             onPressed: () => _musicControllerBloc.add(NextSong()),
             icon: Icon(
               Icons.skip_next_rounded,
-              size: 34.sp,
+              size: 26.sp,
               color: AppColors.textPrimary,
             ),
           ),
+          SizedBox(width: 4.w),
           IconButton(
             onPressed: () => _musicControllerBloc.add(ChangeRepeatMode()),
-            icon: Icon(_repeatIcon, size: 24.sp, color: _repeatColor),
+            icon: Icon(
+              _repeatIcon,
+              size: 21.sp,
+              color: _musicControllerBloc.stateData.repeatMode == RepeatMode.off
+                  ? AppColors.textSecondary
+                  : AppColors.accent,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomRow() {
+  Widget _buildBottomStatsRow(
+    BuildContext context,
+    MusicControllerStateData data,
+  ) {
+    final double pitchSt = ratioToSemitones(data.pitch).round().toDouble();
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 34.w),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          InkWell(
-            onTap: () => setState(() => _showLyrics = !_showLyrics),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  _showLyrics ? Icons.lyrics_rounded : Icons.lyrics_outlined,
-                  size: 22.sp,
-                  color: _showLyrics ? AppColors.accent : AppColors.textPrimary,
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  'Lyrics',
-                  style: TextStyle(
-                    color: _showLyrics
-                        ? AppColors.accent
-                        : AppColors.textPrimary,
-                    fontSize: 15.sp,
-                  ),
-                ),
-              ],
+          Expanded(
+            child: _StatTile(
+              label: 'SPEED',
+              value: '${data.speed.toStringAsFixed(2)}×',
+              valueColor: AppColors.accent,
+              onTap: () => SpeedPitchSheet.show(context, _musicControllerBloc),
             ),
           ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: _StatTile(
+              label: 'PITCH',
+              value:
+                  '${pitchSt >= 0 ? '+' : ''}${pitchSt.toInt()} st',
+              valueColor: AppColors.textPrimary,
+              onTap: () => SpeedPitchSheet.show(context, _musicControllerBloc),
+            ),
+          ),
+          SizedBox(width: 10.w),
           InkWell(
-            onTap: () => PlayingQueueSheet.show(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  Icons.queue_music_rounded,
-                  size: 22.sp,
-                  color: AppColors.textPrimary,
-                ),
-                SizedBox(width: 8.w),
-                Text(
-                  'Playing Queue',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15.sp,
-                  ),
-                ),
-              ],
+            borderRadius: BorderRadius.circular(14.r),
+            onTap: () {
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.transparent,
+                builder: (BuildContext sheetContext) =>
+                    EqualizerSheet(musicBloc: _musicControllerBloc),
+              );
+            },
+            child: Container(
+              width: 64.w,
+              height: 64.w,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(14.r),
+              ),
+              child: Icon(
+                Icons.tune_rounded,
+                size: 22.sp,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],
@@ -755,51 +428,209 @@ class _MusicPlayerPageState extends State<MusicPlayerPage>
   }
 }
 
-class _TonearmPainter extends CustomPainter {
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14.r),
+      onTap: onTap,
+      child: Container(
+        height: 64.h,
+        padding: EdgeInsets.symmetric(horizontal: 14.w),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 9.5.sp,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.5,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 19.sp,
+                fontWeight: FontWeight.w700,
+                color: valueColor,
+                fontFeatures: const <FontFeature>[
+                  FontFeature.tabularFigures(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrbitalRing extends StatelessWidget {
+  const _OrbitalRing({required this.song, required this.data});
+
+  final SongModel? song;
+  final MusicControllerStateData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final double dur = data.duration > 0 ? data.duration.toDouble() : 1;
+    final double posFrac = (data.position / dur).clamp(0.0, 1.0);
+    final double? aFrac = data.abLoopAMs == null
+        ? null
+        : (data.abLoopAMs! / dur).clamp(0.0, 1.0);
+    final double? bFrac = data.abLoopBMs == null
+        ? null
+        : (data.abLoopBMs! / dur).clamp(0.0, 1.0);
+    final double ringSize = _ringSize.w;
+    final double artSize = ringSize - 92.w;
+
+    return SizedBox(
+      width: ringSize,
+      height: ringSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          CustomPaint(
+            size: Size(ringSize, ringSize),
+            painter: _OrbitalRingsPainter(
+              positionFraction: posFrac,
+              loopAFraction: aFrac,
+              loopBFraction: bFrac,
+            ),
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18.r),
+            child: QueryArtworkWidget(
+              type: ArtworkType.AUDIO,
+              id: song?.id ?? 0,
+              keepOldArtwork: true,
+              artworkFit: BoxFit.cover,
+              artworkWidth: artSize,
+              artworkHeight: artSize,
+              nullArtworkWidget: Container(
+                width: artSize,
+                height: artSize,
+                color: AppColors.surface,
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.music_note_rounded,
+                  size: 44.sp,
+                  color: AppColors.iconColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrbitalRingsPainter extends CustomPainter {
+  _OrbitalRingsPainter({
+    required this.positionFraction,
+    required this.loopAFraction,
+    required this.loopBFraction,
+  });
+
+  final double positionFraction;
+  final double? loopAFraction;
+  final double? loopBFraction;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final Offset pivot = Offset(size.width - 16, 16);
-    final Offset head = Offset(size.width * 0.20, size.height * 0.82);
-    final Offset elbow = Offset(size.width * 0.66, size.height * 0.46);
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double halfSize = size.width / 2;
+    final double outerRadius = halfSize * (_ringOuterR / _ringHalf);
+    final double innerRadius = halfSize * (_ringInnerR / _ringHalf);
+    final double outerStroke = halfSize * (3 / _ringHalf);
+    final double innerStroke = halfSize * (6 / _ringHalf);
+    const double startAngle = -math.pi / 2;
 
-    final Paint armPaint = Paint()
-      ..color = const Color(0xFFE8E8E8)
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final Path arm = Path()
-      ..moveTo(pivot.dx, pivot.dy)
-      ..lineTo(elbow.dx, elbow.dy)
-      ..lineTo(head.dx, head.dy);
-
-    canvas.drawPath(arm, armPaint);
-
-    canvas.save();
-    canvas.translate(head.dx, head.dy);
-    canvas.rotate(-math.pi / 5);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset.zero, width: 20, height: 13),
-        const Radius.circular(3),
-      ),
-      Paint()..color = const Color(0xFFF2F2F2),
-    );
-    canvas.restore();
-
-    canvas.drawCircle(pivot, 15, Paint()..color = const Color(0xFFD8D8D8));
     canvas.drawCircle(
-      pivot,
-      15,
+      center,
+      outerRadius,
       Paint()
-        ..color = const Color(0xFF9A9A9A)
+        ..color = AppColors.divider
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..strokeWidth = outerStroke,
     );
-    canvas.drawCircle(pivot, 6, Paint()..color = const Color(0xFF8C8C8C));
+
+    if (positionFraction > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: outerRadius),
+        startAngle,
+        2 * math.pi * positionFraction,
+        false,
+        Paint()
+          ..color = AppColors.accent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = outerStroke
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    canvas.drawCircle(
+      center,
+      innerRadius,
+      Paint()
+        ..color = AppColors.surface
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = innerStroke,
+    );
+
+    final double? a = loopAFraction;
+    final double? b = loopBFraction;
+    if (a != null && b != null && b > a) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: innerRadius),
+        startAngle + 2 * math.pi * a,
+        2 * math.pi * (b - a),
+        false,
+        Paint()
+          ..color = AppColors.loop
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = innerStroke
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    final double markerAngle = startAngle + 2 * math.pi * positionFraction;
+    canvas.drawCircle(
+      Offset(
+        center.dx + outerRadius * math.cos(markerAngle),
+        center.dy + outerRadius * math.sin(markerAngle),
+      ),
+      halfSize * (7.5 / _ringHalf),
+      Paint()..color = Colors.white,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _TonearmPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _OrbitalRingsPainter oldDelegate) {
+    return oldDelegate.positionFraction != positionFraction ||
+        oldDelegate.loopAFraction != loopAFraction ||
+        oldDelegate.loopBFraction != loopBFraction;
+  }
 }

@@ -9,7 +9,9 @@ import '../widgets/playlists/playlist_thumbnail.dart';
 import 'song_list_detail_page.dart';
 
 class ArtistsPage extends StatefulWidget {
-  const ArtistsPage({super.key});
+  const ArtistsPage({required this.searchController, super.key});
+
+  final TextEditingController searchController;
 
   @override
   State<ArtistsPage> createState() => _ArtistsPageState();
@@ -18,7 +20,6 @@ class ArtistsPage extends StatefulWidget {
 class _ArtistsPageState extends State<ArtistsPage>
     with AutomaticKeepAliveClientMixin {
   late SongsBloc _songsBloc;
-  final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
   @override
@@ -28,14 +29,18 @@ class _ArtistsPageState extends State<ArtistsPage>
   void initState() {
     super.initState();
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    _searchController.addListener(() {
-      setState(() => _query = _searchController.text.trim().toLowerCase());
-    });
+    widget.searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(
+      () => _query = widget.searchController.text.trim().toLowerCase(),
+    );
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    widget.searchController.removeListener(_onSearchChanged);
     super.dispose();
   }
 
@@ -60,45 +65,6 @@ class _ArtistsPageState extends State<ArtistsPage>
     super.build(context);
     return Column(
       children: <Widget>[
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          child: SizedBox(
-            height: 44.h,
-            child: SearchBar(
-              controller: _searchController,
-              leading: Icon(
-                Icons.search_rounded,
-                size: 20.sp,
-                color: AppColors.textSecondary,
-              ),
-              hintText: 'Search Artists...',
-              hintStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
-              ),
-              shadowColor: const WidgetStatePropertyAll<Color>(
-                AppColors.transparent,
-              ),
-              backgroundColor: const WidgetStatePropertyAll<Color>(
-                AppColors.surface,
-              ),
-              padding: WidgetStatePropertyAll<EdgeInsets>(
-                EdgeInsets.symmetric(horizontal: 12.w),
-              ),
-              textStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(
-                  fontSize: 14.sp,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              shape: WidgetStatePropertyAll<OutlinedBorder>(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-            ),
-          ),
-        ),
         Expanded(
           child: BlocBuilder<SongsBloc, SongsState>(
             builder: (BuildContext context, SongsState state) {
@@ -119,32 +85,68 @@ class _ArtistsPageState extends State<ArtistsPage>
                 );
               }
 
-              return ListView.builder(
-                itemCount: artists.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final ArtistModel artist = artists[index];
-                  return ListTile(
-                    leading: PlaylistThumbnail.artist(size: 44.w),
-                    title: Text(
-                      artist.artist,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15.sp,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    subtitle: Text(
-                      '${artist.numberOfTracks ?? 0} Song${artist.numberOfTracks == 1 ? '' : 's'}',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13.sp,
+              return Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 4.h),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${artists.length} artist${artists.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    contentPadding: EdgeInsets.only(left: 16.w, right: 4.w),
-                    onTap: () => _openArtist(artist),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: artists.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final ArtistModel artist = artists[index];
+                        final int tracks = artist.numberOfTracks ?? 0;
+                        final int albums = artist.numberOfAlbums ?? 0;
+                        return ListTile(
+                          leading: PlaylistThumbnail.artist(size: 48.w),
+                          title: Text(
+                            artist.artist,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          subtitle: Text(
+                            '$tracks track${tracks == 1 ? '' : 's'} · '
+                            '$albums album${albums == 1 ? '' : 's'}',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFeatures: const <FontFeature>[
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16.sp,
+                            color: AppColors.disabled,
+                          ),
+                          contentPadding: EdgeInsets.only(
+                            left: 18.w,
+                            right: 12.w,
+                          ),
+                          onTap: () => _openArtist(artist),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

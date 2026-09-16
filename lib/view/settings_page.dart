@@ -14,6 +14,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_slider_theme.dart';
 import '../service/model_manager.dart';
 import '../service/player_client.dart';
+import '../service/speed_memory.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _settingsBox.get('vocalEnhanceEnabled', defaultValue: true) as bool;
   late bool _hierarchicalFolders =
       _settingsBox.get('hierarchicalFolders', defaultValue: false) as bool;
+  late bool _rememberSpeedPerTrack = SpeedMemory.enabled;
 
   bool? _modelsReady;
   int? _modelsSizeBytes;
@@ -124,6 +126,11 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsBox.put('vocalEnhanceEnabled', value);
   }
 
+  void _onRememberSpeedPerTrackChanged(bool value) {
+    setState(() => _rememberSpeedPerTrack = value);
+    SpeedMemory.enabled = value;
+  }
+
   Future<void> _onHierarchicalFoldersChanged(bool value) async {
     setState(() => _hierarchicalFolders = value);
     await _settingsBox.put('hierarchicalFolders', value);
@@ -133,7 +140,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        backgroundColor: AppColors.surfaceHigh,
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         title: const Text(
           'Delete model files?',
           style: TextStyle(color: AppColors.textPrimary),
@@ -204,7 +212,8 @@ class _SettingsPageState extends State<SettingsPage> {
     showDialog<void>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        backgroundColor: AppColors.surfaceHigh,
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
         title: const Text(
           'Privacy',
           style: TextStyle(color: AppColors.textPrimary),
@@ -273,6 +282,12 @@ class _SettingsPageState extends State<SettingsPage> {
             onChanged: _onHierarchicalFoldersChanged,
           ),
           const _SectionHeader('Playback'),
+          _SettingsSwitchTile(
+            title: 'Remember speed per track',
+            subtitle: 'Each song reopens at its last ratio',
+            value: _rememberSpeedPerTrack,
+            onChanged: _onRememberSpeedPerTrackChanged,
+          ),
           BlocBuilder<MusicControllerBloc, MusicControllerState>(
             builder: (BuildContext context, MusicControllerState state) {
               final MusicControllerBloc musicBloc = context
@@ -478,13 +493,14 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 8.h),
+      padding: EdgeInsets.fromLTRB(18.w, 24.h, 18.w, 8.h),
       child: Text(
-        title,
+        title.toUpperCase(),
         style: TextStyle(
-          color: AppColors.accent,
-          fontSize: 14.sp,
+          color: AppColors.textTertiary,
+          fontSize: 10.5.sp,
           fontWeight: FontWeight.w600,
+          letterSpacing: 1.5,
         ),
       ),
     );
@@ -508,10 +524,14 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+      contentPadding: EdgeInsets.symmetric(horizontal: 18.w),
       title: Text(
         title,
-        style: TextStyle(color: AppColors.textPrimary, fontSize: 15.sp),
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 15.sp,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       subtitle: subtitle == null
           ? null
@@ -520,8 +540,9 @@ class _SettingsTile extends StatelessWidget {
               child: Text(
                 subtitle!,
                 style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13.sp,
+                  color: AppColors.textTertiary,
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -550,8 +571,10 @@ class _SettingsSwitchTile extends StatelessWidget {
       subtitle: subtitle,
       trailing: Switch(
         value: value,
-        activeThumbColor: AppColors.white,
+        activeThumbColor: Colors.white,
         activeTrackColor: AppColors.accent,
+        inactiveThumbColor: AppColors.textTertiary,
+        inactiveTrackColor: AppColors.surfaceHigh,
         onChanged: onChanged,
       ),
       onTap: () => onChanged(!value),

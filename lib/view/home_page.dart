@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage>
   late MusicControllerBloc _musicControllerBloc;
   bool isSearching = false;
   final TextEditingController searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -48,30 +49,94 @@ class _HomePageState extends State<HomePage>
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _openSearch() {
+    setState(() => isSearching = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    searchController.clear();
+    setState(() => isSearching = false);
+    _searchFocusNode.unfocus();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
-          title: const Text(
-            'SLUNE',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          title: isSearching
+              ? TextField(
+                  controller: searchController,
+                  focusNode: _searchFocusNode,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 17),
+                  cursorColor: AppColors.accent,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'Search',
+                    hintStyle: TextStyle(color: AppColors.textTertiary),
+                  ),
+                )
+              : const Text(
+                  'SLUNE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
           backgroundColor: AppColors.background,
+          leading: isSearching
+              ? IconButton(
+                  onPressed: _closeSearch,
+                  icon: Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.textPrimary,
+                    size: 24.sp,
+                  ),
+                )
+              : null,
           actions: <Widget>[
-            IconButton(
-              onPressed: () => context.push(AppRouter.settings),
-              icon: Icon(
-                Icons.settings_outlined,
-                color: AppColors.textPrimary,
-                size: 24.sp,
+            if (isSearching)
+              IconButton(
+                onPressed: searchController.clear,
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textSecondary,
+                  size: 22.sp,
+                ),
+              )
+            else ...<Widget>[
+              IconButton(
+                onPressed: _openSearch,
+                icon: Icon(
+                  Icons.search_rounded,
+                  color: AppColors.textPrimary,
+                  size: 24.sp,
+                ),
               ),
-            ),
+              IconButton(
+                onPressed: () => context.push(AppRouter.settings),
+                icon: Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.textPrimary,
+                  size: 24.sp,
+                ),
+              ),
+            ],
           ],
           bottom: PreferredSize(
             preferredSize: Size.fromHeight(36.h),
@@ -79,19 +144,18 @@ class _HomePageState extends State<HomePage>
               controller: _tabController,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorSize: TabBarIndicatorSize.label,
               indicatorColor: AppColors.accent,
-              indicatorWeight: 3,
               dividerColor: AppColors.divider,
               labelColor: AppColors.textPrimary,
               unselectedLabelColor: AppColors.textSecondary,
               labelPadding: EdgeInsets.symmetric(horizontal: 18.w),
               labelStyle: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w500,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w700,
               ),
               unselectedLabelStyle: TextStyle(
-                fontSize: 16.sp,
+                fontSize: 15.sp,
                 fontWeight: FontWeight.w500,
               ),
               tabs: List<Widget>.generate(Tabs.values.length, (int index) {
@@ -105,12 +169,12 @@ class _HomePageState extends State<HomePage>
         ),
         body: TabBarView(
           controller: _tabController,
-          children: const <Widget>[
-            AllSongsPage(),
-            PlaylistsPage(),
-            AlbumsPage(),
-            ArtistsPage(),
-            FoldersPage(),
+          children: <Widget>[
+            AllSongsPage(searchController: searchController),
+            PlaylistsPage(searchController: searchController),
+            AlbumsPage(searchController: searchController),
+            ArtistsPage(searchController: searchController),
+            FoldersPage(searchController: searchController),
           ],
         ),
         bottomNavigationBar:
@@ -126,6 +190,8 @@ class _HomePageState extends State<HomePage>
                           .clamp(0.0, 1.0)
                     : 0.0;
 
+                final double speed = _musicControllerBloc.stateData.speed;
+
                 return GestureDetector(
                   onHorizontalDragEnd: (DragEndDetails details) {
                     final double? velocity = details.primaryVelocity;
@@ -136,100 +202,123 @@ class _HomePageState extends State<HomePage>
                       velocity < 0 ? NextSong() : PreviousSong(),
                     );
                   },
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(8.w, 0, 8.w, 16.h),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(32.r),
-                      onTap: () {
-                        Utils.openPlayerBottomSheet(
-                          context,
-                          song,
-                          _musicControllerBloc.stateData.index,
-                        );
-                      },
+                  child: InkWell(
+                    onTap: () {
+                      Utils.openPlayerBottomSheet(
+                        context,
+                        song,
+                        _musicControllerBloc.stateData.index,
+                      );
+                    },
+                    child: SafeArea(
+                      top: false,
                       child: Container(
-                        height: 48.h,
-                        decoration: BoxDecoration(
-                          color: AppColors.vinylEdge,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(32.r),
-                            bottomRight: Radius.circular(32.r),
+                        decoration: const BoxDecoration(
+                          color: AppColors.background,
+                          border: Border(
+                            top: BorderSide(color: AppColors.divider),
                           ),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                Transform.scale(
-                                  scale: 1.1,
-                                  child: QueryArtworkWidget(
-                                    id: song.id,
-                                    keepOldArtwork: true,
-                                    type: ArtworkType.AUDIO,
-                                    artworkHeight: 44.w,
-                                    artworkWidth: 44.w,
-                                    artworkBorder: BorderRadius.circular(4.r),
-                                    nullArtworkWidget: Container(
-                                      height: 44.w,
-                                      width: 44.w,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.iconBg,
-                                        borderRadius: BorderRadius.circular(
-                                          4.r,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.music_note_rounded,
-                                        size: 20.sp,
-                                        color: AppColors.iconColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 12.w),
-                                Expanded(
-                                  child: ScrollingTitle(
-                                    text: song.title,
-                                    height: 18.h,
-                                    alignment: Alignment.centerLeft,
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontSize: 13.sp,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () {
-                                    _musicControllerBloc.add(
-                                      PlayPauseToggled(),
-                                    );
-                                  },
-                                  icon: Icon(
-                                    _musicControllerBloc.stateData.isPlaying
-                                        ? Icons.pause_circle_outline_rounded
-                                        : Icons.play_circle_outline_rounded,
-                                    size: 32.sp,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () =>
-                                      PlayingQueueSheet.show(context),
-                                  icon: Icon(
-                                    Icons.queue_music_rounded,
-                                    size: 26.sp,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
                             LinearProgressIndicator(
                               value: progress,
                               minHeight: 2.h,
                               backgroundColor: AppColors.divider,
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 AppColors.accent,
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16.w,
+                                vertical: 10.h,
+                              ),
+                              child: Row(
+                                children: <Widget>[
+                                  QueryArtworkWidget(
+                                    id: song.id,
+                                    keepOldArtwork: true,
+                                    type: ArtworkType.AUDIO,
+                                    artworkHeight: 40.w,
+                                    artworkWidth: 40.w,
+                                    artworkBorder: BorderRadius.circular(8.r),
+                                    nullArtworkWidget: Container(
+                                      height: 40.w,
+                                      width: 40.w,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.iconBg,
+                                        borderRadius: BorderRadius.circular(
+                                          8.r,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.music_note_rounded,
+                                        size: 18.sp,
+                                        color: AppColors.iconColor,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        ScrollingTitle(
+                                          text: song.title,
+                                          height: 18.h,
+                                          alignment: Alignment.centerLeft,
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontSize: 13.5.sp,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        Text(
+                                          (speed - 1.0).abs() > 0.01
+                                              ? '${song.artist ?? 'Unknown Artist'} · ${speed.toStringAsFixed(2)}×'
+                                              : song.artist ??
+                                                    'Unknown Artist',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color:
+                                                (speed - 1.0).abs() > 0.01
+                                                ? AppColors.accent
+                                                : AppColors.textSecondary,
+                                            fontSize: 11.5.sp,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      _musicControllerBloc.add(
+                                        PlayPauseToggled(),
+                                      );
+                                    },
+                                    icon: Icon(
+                                      _musicControllerBloc.stateData.isPlaying
+                                          ? Icons.pause_rounded
+                                          : Icons.play_arrow_rounded,
+                                      size: 26.sp,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () =>
+                                        PlayingQueueSheet.show(context),
+                                    icon: Icon(
+                                      Icons.queue_music_rounded,
+                                      size: 22.sp,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
+import '../bloc/music_controller/music_controller_bloc.dart';
 import '../bloc/songs/songs_bloc.dart';
 import '../core/theme/app_colors.dart';
+import '../core/utils/utils.dart';
 import '../widgets/songs/song_options_sheet.dart';
 import '../widgets/songs/song_tile.dart';
 
@@ -50,19 +52,77 @@ class SongListDetailPage extends StatelessWidget {
       body: Column(
         children: <Widget>[
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-            child: Row(
-              children: <Widget>[
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13.sp,
-                  ),
+            padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 4.h),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w500,
                 ),
-              ],
+              ),
             ),
           ),
+          if (songs.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(18.w, 8.h, 18.w, 4.h),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(0, 46.h),
+                        backgroundColor: AppColors.accent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13.r),
+                        ),
+                      ),
+                      onPressed: () {
+                        context.read<MusicControllerBloc>().add(
+                          InitAudio(song: songs.first, index: 0, queue: songs),
+                        );
+                        Utils.openPlayerBottomSheet(context, songs.first, 0);
+                      },
+                      icon: Icon(
+                        Icons.play_arrow_rounded,
+                        size: 18.sp,
+                        color: Colors.white,
+                      ),
+                      label: Text(
+                        'Play all ${songs.length}',
+                        style: TextStyle(
+                          fontSize: 13.5.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Container(
+                    width: 46.h,
+                    height: 46.h,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.divider),
+                      borderRadius: BorderRadius.circular(13.r),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () => context.read<MusicControllerBloc>().add(
+                        ShuffleAll(songs),
+                      ),
+                      icon: Icon(
+                        Icons.shuffle_rounded,
+                        size: 19.sp,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: songs.isEmpty
                 ? const Center(

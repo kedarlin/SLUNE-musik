@@ -7,7 +7,6 @@ import 'package:on_audio_query/on_audio_query.dart';
 import '../bloc/songs/songs_bloc.dart';
 import '../core/theme/app_colors.dart';
 import '../models/folder_model.dart';
-import '../widgets/playlists/playlist_thumbnail.dart';
 import 'hierarchical_folder_page.dart';
 import 'song_list_detail_page.dart';
 
@@ -16,7 +15,9 @@ import 'song_list_detail_page.dart';
 /// default) or hierarchical (the real nested tree, drilling down folder by
 /// folder via [HierarchicalFolderPage]).
 class FoldersPage extends StatefulWidget {
-  const FoldersPage({super.key});
+  const FoldersPage({required this.searchController, super.key});
+
+  final TextEditingController searchController;
 
   @override
   State<FoldersPage> createState() => _FoldersPageState();
@@ -25,7 +26,6 @@ class FoldersPage extends StatefulWidget {
 class _FoldersPageState extends State<FoldersPage>
     with AutomaticKeepAliveClientMixin {
   late SongsBloc _songsBloc;
-  final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
   @override
@@ -35,14 +35,18 @@ class _FoldersPageState extends State<FoldersPage>
   void initState() {
     super.initState();
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    _searchController.addListener(() {
-      setState(() => _query = _searchController.text.trim().toLowerCase());
-    });
+    widget.searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(
+      () => _query = widget.searchController.text.trim().toLowerCase(),
+    );
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    widget.searchController.removeListener(_onSearchChanged);
     super.dispose();
   }
 
@@ -84,45 +88,6 @@ class _FoldersPageState extends State<FoldersPage>
 
     return Column(
       children: <Widget>[
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          child: SizedBox(
-            height: 44.h,
-            child: SearchBar(
-              controller: _searchController,
-              leading: Icon(
-                Icons.search_rounded,
-                size: 20.sp,
-                color: AppColors.textSecondary,
-              ),
-              hintText: 'Search Folders...',
-              hintStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
-              ),
-              shadowColor: const WidgetStatePropertyAll<Color>(
-                AppColors.transparent,
-              ),
-              backgroundColor: const WidgetStatePropertyAll<Color>(
-                AppColors.surface,
-              ),
-              padding: WidgetStatePropertyAll<EdgeInsets>(
-                EdgeInsets.symmetric(horizontal: 12.w),
-              ),
-              textStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(
-                  fontSize: 14.sp,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              shape: WidgetStatePropertyAll<OutlinedBorder>(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-            ),
-          ),
-        ),
         Expanded(
           child: BlocBuilder<SongsBloc, SongsState>(
             builder: (BuildContext context, SongsState state) {
@@ -142,32 +107,78 @@ class _FoldersPageState extends State<FoldersPage>
                 );
               }
 
-              return ListView.builder(
-                itemCount: folders.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final FolderModel folder = folders[index];
-                  return ListTile(
-                    leading: PlaylistThumbnail.folder(size: 44.w),
-                    title: Text(
-                      folder.name,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15.sp,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    subtitle: Text(
-                      '${folder.songCount} Song${folder.songCount == 1 ? '' : 's'}',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13.sp,
+              return Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 4.h),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${folders.length} folder${folders.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                    contentPadding: EdgeInsets.only(left: 16.w, right: 4.w),
-                    onTap: () => _openFolder(folder),
-                  );
-                },
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: folders.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final FolderModel folder = folders[index];
+                        return ListTile(
+                          leading: Container(
+                            width: 44.w,
+                            height: 44.w,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.badgeGoldBg,
+                              borderRadius: BorderRadius.circular(9.r),
+                            ),
+                            child: Icon(
+                              Icons.folder_rounded,
+                              size: 22.sp,
+                              color: AppColors.badgeGoldIcon,
+                            ),
+                          ),
+                          title: Text(
+                            folder.name,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                          subtitle: Text(
+                            '${folder.songCount} track${folder.songCount == 1 ? '' : 's'}',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12.5.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFeatures: const <FontFeature>[
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16.sp,
+                            color: AppColors.disabled,
+                          ),
+                          contentPadding: EdgeInsets.only(
+                            left: 18.w,
+                            right: 12.w,
+                          ),
+                          onTap: () => _openFolder(folder),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),

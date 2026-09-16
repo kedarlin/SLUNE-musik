@@ -44,3 +44,11 @@ class ReorderSongsInPlaylist extends PlaylistsEvent {
   final int oldIndex;
   final int newIndex;
 }
+
+class SetPlaylistPinnedSpeed extends PlaylistsEvent {
+  SetPlaylistPinnedSpeed(this.playlistId, this.speed);
+  final String playlistId;
+
+  /// null clears the pin.
+  final double? speed;
+}

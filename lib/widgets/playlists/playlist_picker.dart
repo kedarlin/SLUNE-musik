@@ -19,10 +19,7 @@ class PlaylistPicker {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (BuildContext sheetContext) {
         return BlocBuilder<PlaylistsBloc, PlaylistsState>(
           bloc: playlistsBloc,
@@ -31,42 +28,37 @@ class PlaylistPicker {
 
             return SheetShell(
               header: Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 8.h),
-                child: Text(
-                  'Add To Playlist',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 17.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Add to playlist',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      '${song.title} · ${song.artist ?? 'Unknown Artist'}',
+                      style: TextStyle(
+                        color: AppColors.textTertiary,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
                 ),
               ),
               body: ListView(
                 shrinkWrap: true,
                 padding: EdgeInsets.only(bottom: 12.h),
                 children: <Widget>[
-                  ListTile(
-                    leading: Container(
-                      width: 48.w,
-                      height: 48.w,
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: Icon(
-                        Icons.playlist_add_rounded,
-                        size: 24.sp,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    title: Text(
-                      'Create New Playlist',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15.sp,
-                      ),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
+                  InkWell(
                     onTap: () async {
                       Navigator.of(sheetContext).pop();
 
@@ -80,33 +72,73 @@ class PlaylistPicker {
                         );
                       }
                     },
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 8.h,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            width: 52.w,
+                            height: 52.w,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.12),
+                              border: Border.all(color: AppColors.accent),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            child: Icon(
+                              Icons.add_rounded,
+                              size: 22.sp,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                          SizedBox(width: 13.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'New playlist',
+                                  style: TextStyle(
+                                    color: AppColors.accent,
+                                    fontSize: 15.5.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                Text(
+                                  'Starts with this track',
+                                  style: TextStyle(
+                                    color: AppColors.textTertiary,
+                                    fontSize: 12.5.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Divider(
+                    color: AppColors.divider,
+                    height: 1.h,
+                    thickness: 1,
+                    indent: 20.w,
+                    endIndent: 20.w,
                   ),
                   for (final Playlist playlist in playlists)
-                    ListTile(
-                      leading: PlaylistThumbnail.user(size: 48.w),
-                      title: Text(
-                        playlist.name,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 15.sp,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      subtitle: Text(
-                        '${playlist.songIds.length} Song'
-                        '${playlist.songIds.length == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
-                      onTap: () {
+                    _PlaylistRow(
+                      playlist: playlist,
+                      inPlaylist: playlist.songIds.contains(song.id),
+                      onToggle: (bool inPlaylist) {
                         playlistsBloc.add(
-                          AddSongToPlaylist(playlist.id, song.id),
+                          inPlaylist
+                              ? RemoveSongFromPlaylist(playlist.id, song.id)
+                              : AddSongToPlaylist(playlist.id, song.id),
                         );
-                        Navigator.of(sheetContext).pop();
                       },
                     ),
                 ],
@@ -115,6 +147,82 @@ class PlaylistPicker {
           },
         );
       },
+    );
+  }
+}
+
+class _PlaylistRow extends StatelessWidget {
+  const _PlaylistRow({
+    required this.playlist,
+    required this.inPlaylist,
+    required this.onToggle,
+  });
+
+  final Playlist playlist;
+  final bool inPlaylist;
+  final ValueChanged<bool> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onToggle(inPlaylist),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+        child: Row(
+          children: <Widget>[
+            PlaylistThumbnail.user(size: 52.w),
+            SizedBox(width: 13.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    playlist.name,
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15.5.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  Text(
+                    '${playlist.songIds.length} track'
+                    '${playlist.songIds.length == 1 ? '' : 's'}',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w500,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 26.w,
+              height: 26.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: inPlaylist ? AppColors.accent : Colors.transparent,
+                border: inPlaylist
+                    ? null
+                    : Border.all(color: AppColors.disabled),
+                shape: BoxShape.circle,
+              ),
+              child: inPlaylist
+                  ? Icon(Icons.check_rounded, size: 14.sp, color: Colors.white)
+                  : Icon(
+                      Icons.add_rounded,
+                      size: 13.sp,
+                      color: AppColors.textSecondary,
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

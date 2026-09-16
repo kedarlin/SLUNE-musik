@@ -5,6 +5,8 @@ import 'package:on_audio_query/on_audio_query.dart';
 
 import '../bloc/music_controller/music_controller_bloc.dart';
 import '../core/theme/app_colors.dart';
+import '../widgets/common/equalizer_bars.dart';
+import '../widgets/common/sheet_shell.dart';
 
 class PlayingQueueSheet {
   static void show(BuildContext context) {
@@ -14,10 +16,7 @@ class PlayingQueueSheet {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.surfaceHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (BuildContext sheetContext) {
         return _QueueSheetBody(
           musicBloc: musicBloc,
@@ -41,7 +40,7 @@ class _QueueSheetBody extends StatefulWidget {
 class _QueueSheetBodyState extends State<_QueueSheetBody> {
   final ScrollController _scrollController = ScrollController();
 
-  double get _itemExtent => 60.h;
+  double get _itemExtent => 64.h;
 
   int _lastRenderedIndex = -1;
   bool _didInitialScroll = false;
@@ -87,108 +86,125 @@ class _QueueSheetBodyState extends State<_QueueSheetBody> {
         _lastRenderedIndex = musicBloc.stateData.index;
         _scrollToCurrentAfterFrame();
 
-        return Container(
-          decoration: BoxDecoration(
-            color: AppColors.surfaceHigh,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(12.r),
-              topRight: Radius.circular(12.r),
-            ),
-          ),
-          constraints: BoxConstraints(maxHeight: 0.5.sh),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Padding(
-                padding: EdgeInsets.fromLTRB(20.w, 12.h, 8.w, 12.h),
-                child: Row(
+        return SheetShell(
+          header: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    Expanded(
-                      child: Row(
-                        children: <Widget>[
-                          Text(
-                            'Playing Queue',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            '(${queue.length})',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 16.sp,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      'Up Next',
+                      style: TextStyle(
+                        fontSize: 17.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    IconButton(
+                    TextButton(
                       onPressed: () {
                         musicBloc.add(ClearQueue());
                         Navigator.of(widget.sheetContext).pop();
                       },
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        size: 24.sp,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => musicBloc.add(ToggleShuffle()),
-                      icon: Icon(
-                        Icons.shuffle_rounded,
-                        size: 24.sp,
-                        color: musicBloc.stateData.isShuffle
-                            ? AppColors.accent
-                            : AppColors.textPrimary,
+                      child: Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Divider(
-                color: AppColors.textSecondary.withValues(alpha: 0.25),
-                height: 1.h,
-                thickness: 1,
-              ),
-              if (queue.isEmpty)
                 Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40.h),
-                  child: const Text(
-                    'Queue is empty',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                )
-              else
-                Flexible(
-                  child: ReorderableListView.builder(
-                    scrollController: _scrollController,
-                    itemExtent: _itemExtent,
-                    buildDefaultDragHandles: false,
-                    itemCount: queue.length,
-                    onReorder: (int oldIndex, int newIndex) {
-                      musicBloc.add(ReorderQueue(oldIndex, newIndex));
-                    },
-                    itemBuilder: (BuildContext context, int index) {
-                      final SongModel song = queue[index];
-                      final bool isCurrent = index == musicBloc.stateData.index;
-
-                      return _QueueRow(
-                        key: ValueKey<String>('${song.id}-$index'),
-                        song: song,
-                        index: index,
-                        isCurrent: isCurrent,
-                        onTap: () => musicBloc.add(JumpToQueueIndex(index)),
-                        onRemove: () => musicBloc.add(RemoveFromQueue(index)),
-                      );
-                    },
+                  padding: EdgeInsets.only(bottom: 10.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      InkWell(
+                        onTap: () => musicBloc.add(ToggleShuffle()),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              Icons.shuffle_rounded,
+                              size: 15.sp,
+                              color: musicBloc.stateData.isShuffle
+                                  ? AppColors.accent
+                                  : AppColors.textTertiary,
+                            ),
+                            SizedBox(width: 5.w),
+                            Text(
+                              musicBloc.stateData.isShuffle
+                                  ? 'Shuffle on'
+                                  : 'Shuffle off',
+                              style: TextStyle(
+                                fontSize: 12.5.sp,
+                                fontWeight: FontWeight.w500,
+                                color: musicBloc.stateData.isShuffle
+                                    ? AppColors.accent
+                                    : AppColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${queue.length} track${queue.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textTertiary,
+                          fontFeatures: const <FontFeature>[
+                            FontFeature.tabularFigures(),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
+          body: queue.isEmpty
+              ? Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.h),
+                  child: Text(
+                    'Queue is empty',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+                )
+              : ReorderableListView.builder(
+                  scrollController: _scrollController,
+                  itemExtent: _itemExtent,
+                  buildDefaultDragHandles: false,
+                  itemCount: queue.length,
+                  onReorder: (int oldIndex, int newIndex) {
+                    musicBloc.add(ReorderQueue(oldIndex, newIndex));
+                  },
+                  itemBuilder: (BuildContext context, int index) {
+                    final SongModel song = queue[index];
+                    final bool isCurrent = index == musicBloc.stateData.index;
+                    final bool isPlaying =
+                        isCurrent && musicBloc.stateData.isPlaying;
+
+                    return _QueueRow(
+                      key: ValueKey<String>('${song.id}-$index'),
+                      song: song,
+                      index: index,
+                      isCurrent: isCurrent,
+                      isPlaying: isPlaying,
+                      onTap: () => musicBloc.add(JumpToQueueIndex(index)),
+                      onRemove: () => musicBloc.add(RemoveFromQueue(index)),
+                    );
+                  },
+                ),
         );
       },
     );
@@ -200,6 +216,7 @@ class _QueueRow extends StatelessWidget {
     required this.song,
     required this.index,
     required this.isCurrent,
+    required this.isPlaying,
     required this.onTap,
     required this.onRemove,
     super.key,
@@ -208,6 +225,7 @@ class _QueueRow extends StatelessWidget {
   final SongModel song;
   final int index;
   final bool isCurrent;
+  final bool isPlaying;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
@@ -215,26 +233,71 @@ class _QueueRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: isCurrent
-          ? AppColors.accent.withValues(alpha: 0.12)
+          ? AppColors.accent.withValues(alpha: 0.07)
           : AppColors.transparent,
       child: InkWell(
         onTap: onTap,
-        child: Container(
-          height: 40.h,
-          padding: EdgeInsets.symmetric(horizontal: 12.w),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
           child: Row(
             children: <Widget>[
               ReorderableDragStartListener(
                 index: index,
                 child: Padding(
-                  padding: EdgeInsets.only(right: 12.w),
+                  padding: EdgeInsets.only(right: 11.w),
                   child: Icon(
                     Icons.drag_handle_rounded,
-                    size: 22.sp,
-                    color: AppColors.textSecondary,
+                    size: 18.sp,
+                    color: AppColors.disabled,
                   ),
                 ),
               ),
+              SizedBox(
+                width: 48.w,
+                height: 48.w,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    QueryArtworkWidget(
+                      id: song.id,
+                      type: ArtworkType.AUDIO,
+                      artworkHeight: 48.w,
+                      artworkWidth: 48.w,
+                      artworkBorder: BorderRadius.circular(9.r),
+                      keepOldArtwork: true,
+                      nullArtworkWidget: Container(
+                        height: 48.w,
+                        width: 48.w,
+                        decoration: BoxDecoration(
+                          color: AppColors.iconBg,
+                          borderRadius: BorderRadius.circular(9.r),
+                        ),
+                        child: Icon(
+                          Icons.music_note_rounded,
+                          size: 22.sp,
+                          color: AppColors.iconColor,
+                        ),
+                      ),
+                    ),
+                    if (isCurrent)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(9.r),
+                        child: Container(
+                          height: 48.w,
+                          width: 48.w,
+                          color: Colors.black.withValues(alpha: 0.55),
+                          alignment: Alignment.center,
+                          child: EqualizerBars(
+                            isPlaying: isPlaying,
+                            barWidth: 2.5.w,
+                            height: 16.h,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 13.w),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -246,7 +309,8 @@ class _QueueRow extends StatelessWidget {
                         color: isCurrent
                             ? AppColors.accent
                             : AppColors.textPrimary,
-                        fontSize: 14.sp,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -255,7 +319,8 @@ class _QueueRow extends StatelessWidget {
                       song.artist ?? 'Unknown Artist',
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 12.sp,
+                        fontSize: 12.5.sp,
+                        fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
@@ -263,13 +328,15 @@ class _QueueRow extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: onRemove,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 20.sp,
-                  color: AppColors.textSecondary,
+              InkWell(
+                onTap: onRemove,
+                child: Padding(
+                  padding: EdgeInsets.all(6.w),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 17.sp,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
             ],

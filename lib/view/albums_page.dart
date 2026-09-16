@@ -8,7 +8,9 @@ import '../core/theme/app_colors.dart';
 import 'song_list_detail_page.dart';
 
 class AlbumsPage extends StatefulWidget {
-  const AlbumsPage({super.key});
+  const AlbumsPage({required this.searchController, super.key});
+
+  final TextEditingController searchController;
 
   @override
   State<AlbumsPage> createState() => _AlbumsPageState();
@@ -17,7 +19,6 @@ class AlbumsPage extends StatefulWidget {
 class _AlbumsPageState extends State<AlbumsPage>
     with AutomaticKeepAliveClientMixin {
   late SongsBloc _songsBloc;
-  final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
   @override
@@ -27,14 +28,18 @@ class _AlbumsPageState extends State<AlbumsPage>
   void initState() {
     super.initState();
     _songsBloc = BlocProvider.of<SongsBloc>(context);
-    _searchController.addListener(() {
-      setState(() => _query = _searchController.text.trim().toLowerCase());
-    });
+    widget.searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    setState(
+      () => _query = widget.searchController.text.trim().toLowerCase(),
+    );
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    widget.searchController.removeListener(_onSearchChanged);
     super.dispose();
   }
 
@@ -59,45 +64,6 @@ class _AlbumsPageState extends State<AlbumsPage>
     super.build(context);
     return Column(
       children: <Widget>[
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-          child: SizedBox(
-            height: 44.h,
-            child: SearchBar(
-              controller: _searchController,
-              leading: Icon(
-                Icons.search_rounded,
-                size: 20.sp,
-                color: AppColors.textSecondary,
-              ),
-              hintText: 'Search Albums...',
-              hintStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
-              ),
-              shadowColor: const WidgetStatePropertyAll<Color>(
-                AppColors.transparent,
-              ),
-              backgroundColor: const WidgetStatePropertyAll<Color>(
-                AppColors.surface,
-              ),
-              padding: WidgetStatePropertyAll<EdgeInsets>(
-                EdgeInsets.symmetric(horizontal: 12.w),
-              ),
-              textStyle: WidgetStatePropertyAll<TextStyle>(
-                TextStyle(
-                  fontSize: 14.sp,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              shape: WidgetStatePropertyAll<OutlinedBorder>(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-            ),
-          ),
-        ),
         Expanded(
           child: BlocBuilder<SongsBloc, SongsState>(
             builder: (BuildContext context, SongsState state) {
@@ -118,53 +84,91 @@ class _AlbumsPageState extends State<AlbumsPage>
                 );
               }
 
-              return ListView.builder(
-                itemCount: albums.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final AlbumModel album = albums[index];
-                  return ListTile(
-                    leading: QueryArtworkWidget(
-                      id: album.id,
-                      type: ArtworkType.ALBUM,
-                      artworkHeight: 48.w,
-                      artworkWidth: 48.w,
-                      artworkBorder: BorderRadius.circular(8.r),
-                      nullArtworkWidget: Container(
-                        height: 48.w,
-                        width: 48.w,
-                        decoration: BoxDecoration(
-                          color: AppColors.iconBg,
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Icon(
-                          Icons.album_rounded,
-                          size: 22.sp,
-                          color: AppColors.iconColor,
+              return Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18.w, 0, 18.w, 8.h),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${albums.length} album${albums.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          color: AppColors.textTertiary,
+                          fontSize: 12.5.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    title: Text(
-                      album.album,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 15.sp,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                  ),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: EdgeInsets.fromLTRB(18.w, 4.h, 18.w, 20.h),
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 18.h,
+                            crossAxisSpacing: 16.w,
+                            childAspectRatio: 0.78,
+                          ),
+                      itemCount: albums.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final AlbumModel album = albums[index];
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(12.r),
+                          onTap: () => _openAlbum(album),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              AspectRatio(
+                                aspectRatio: 1,
+                                child: QueryArtworkWidget(
+                                  id: album.id,
+                                  type: ArtworkType.ALBUM,
+                                  artworkBorder: BorderRadius.circular(12.r),
+                                  nullArtworkWidget: Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.iconBg,
+                                      borderRadius: BorderRadius.circular(
+                                        12.r,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      Icons.album_rounded,
+                                      size: 30.sp,
+                                      color: AppColors.iconColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 9.h),
+                              Text(
+                                album.album,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              Text(
+                                '${album.numOfSongs} track${album.numOfSongs == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w500,
+                                  fontFeatures: const <FontFeature>[
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    subtitle: Text(
-                      '${album.artist ?? 'Unknown Artist'} • ${album.numOfSongs} Song${album.numOfSongs == 1 ? '' : 's'}',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13.sp,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    contentPadding: EdgeInsets.only(left: 16.w, right: 4.w),
-                    onTap: () => _openAlbum(album),
-                  );
-                },
+                  ),
+                ],
               );
             },
           ),
